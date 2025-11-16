@@ -144,26 +144,40 @@
             color: #ef4444; /* Rojo */
             font-weight: 700;
         }
-        /* Ocultar elementos de la interfaz en la vista de impresión */
-        @media print {
-            #app-container, #signature-modal, #history-modal, #preview-actions, #custom-message-container, .strategy-checkbox, footer {
-                display: none !important;
-            }
-            body {
-                background: white;
-            }
-            #pdf-preview-modal {
-                display: none !important;
-#pdf-content {
+   /* Ocultar elementos de la interfaz en la vista de impresión */
+@media print {
+
+    /* Ocultar toda la interfaz normal */
+    #app-container,
+    #signature-modal,
+    #history-modal,
+    #preview-actions,
+    #custom-message-container,
+    .strategy-checkbox,
+    footer {
+        display: none !important;
+    }
+
+    body {
+        background: white;
+    }
+
+    /* Ocultar completamente el modal de previsualización */
+    #pdf-preview-modal {
+        display: none !important;
+    }
+
+    /* Asegurar que SOLO el contenido PDF se imprima */
+    #pdf-content {
         display: block !important;
     }
-                
-            }
-            .pdf-preview-container {
-                box-shadow: none;
-                max-width: 100%;
-            }
-        }
+
+    .pdf-preview-container {
+        box-shadow: none;
+        max-width: 100%;
+    }
+}
+
 
     </style>
 </head>
