@@ -1,0 +1,1354 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Análisis de Riesgos de la Tarea (ART)</title>
+    <!-- Carga de Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Carga de Librerías para PDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <!-- Configuración de fuente Inter -->
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f7f7f9;
+        }
+        /* Estilo para la advertencia en caso de respuesta "NO" */
+        .warning-text {
+            color: #ef4444; /* Rojo 500 */
+            font-weight: 600;
+        }
+        /* Estilo para el estado de los botones (seleccionado) */
+        .btn-selected {
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.5); /* Anillo azul ligero */
+            border-color: #3b82f6;
+        }
+        /* Estilo para la caja de la firma */
+        #signature-display-box {
+            min-height: 80px;
+            background-color: #e2e8f0; /* Azul grisáceo claro */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 2px dashed #94a3b8; /* Borde punteado */
+            border-radius: 0.5rem;
+            color: #64748b;
+            font-style: italic;
+            cursor: pointer;
+            overflow: hidden;
+            padding: 4px; /* Padding interno para que la firma no toque el borde */
+        }
+        #signature-image {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+        }
+
+        /* Estilo específico para las casillas de estrategias */
+        .strategy-box {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100px; /* Tamaño fijo para simular el rectángulo */
+            border: 2px solid #cbd5e1;
+            border-radius: 0.5rem;
+            text-align: center;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            user-select: none;
+            position: relative;
+            background-color: #f8fafc;
+            color: #475569;
+        }
+        .strategy-box.selected {
+            border-color: #0d9488; /* Teal 600 */
+            background-color: #ccfbf1; /* Teal 100 */
+            color: #0f766e; /* Teal 700 */
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+        }
+        .strategy-checkbox {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            width: 1.25rem;
+            height: 1.25rem;
+            accent-color: #0d9488; /* Teal 600 */
+        }
+        /* Estilos para el Canvas de Firma */
+        #signature-canvas {
+            border: 2px solid #3b82f6;
+            cursor: crosshair;
+            touch-action: none; /* Crucial para manejar el tacto en móviles */
+        }
+
+        /* --- ESTILOS DE PREVISUALIZACIÓN FIJA (HOJA DE PAPEL) --- */
+        /* Esto define cómo se ve el documento ANTES de generar el PDF.
+           Tiene ancho fijo para simular una hoja real.
+        */
+        .paper-sheet {
+            width: 800px !important;     /* Ancho fijo */
+            min-width: 800px !important; /* No encoger */
+            max-width: 800px !important; /* No estirar */
+            background-color: white;
+            padding: 40px;
+            margin: 0 auto; /* Centrado */
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            box-sizing: border-box;
+        }
+        
+        /* Contenedor con scroll para móviles */
+        .preview-scroll-wrapper {
+            width: 100%;
+            overflow-x: auto; /* Permite scroll horizontal en móviles */
+            background-color: #525659; /* Fondo gris oscuro tipo visor PDF */
+            padding: 20px;
+            display: flex;
+            justify-content: center; /* Centra la hoja si cabe */
+            align-items: flex-start;
+        }
+
+        /* Estilos internos del PDF */
+        .pdf-section-title {
+            font-weight: bold;
+            font-size: 16px; /* Tamaño fijo en px */
+            margin-top: 20px;
+            margin-bottom: 10px;
+            border-bottom: 2px solid #ef4444;
+            padding-bottom: 4px;
+            text-transform: uppercase;
+        }
+        .pdf-data-item {
+            display: flex;
+            justify-content: space-between;
+            border-bottom: 1px solid #e5e7eb;
+            padding: 8px 0;
+            font-size: 14px; /* Tamaño fijo */
+        }
+        .pdf-data-label {
+            font-weight: 700;
+            color: #374151;
+            flex-basis: 40%;
+        }
+        .pdf-data-value {
+            color: #111827;
+            text-align: right;
+            flex-basis: 60%;
+            font-weight: 500;
+        }
+        .pdf-signature-box {
+            border: 1px solid #1f2937;
+            padding: 5px;
+            margin-top: 10px;
+            height: 120px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .pdf-signature-image {
+            max-width: 100%;
+            max-height: 110px;
+            object-fit: contain;
+        }
+        .pdf-check-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px dashed #e5e7eb;
+            font-size: 13px;
+        }
+        .pdf-check-result-si {
+            color: #059669; /* Green 600 */
+            font-weight: 800;
+        }
+        .pdf-check-result-no {
+            color: #dc2626; /* Red 600 */
+            font-weight: 800;
+        }
+        
+        /* Ajuste para el modal de firma en móvil */
+        #signature-modal > div {
+            max-height: 95vh;
+            max-width: 95vw;
+        }
+
+    </style>
+</head>
+<body class="p-4 sm:p-8">
+
+    <div id="app-container" class="max-w-4xl mx-auto bg-white shadow-2xl rounded-xl p-6 md:p-10">
+
+        <!-- Área de Carga y Usuario -->
+        <div class="mb-4 flex justify-between items-center text-sm text-gray-500">
+            <div id="loading-indicator" class="text-blue-600 font-medium hidden">Cargando datos...</div>
+            <div id="user-info">ID de Usuario: <span id="user-id" class="font-mono text-xs bg-gray-100 p-1 rounded">N/A</span></div>
+        </div>
+        
+        <!-- Alerta de Mensajes Personalizada -->
+        <div id="custom-message-container" aria-live="polite"></div>
+
+        <!-- Encabezado -->
+        <header class="mb-8 border-b-4 border-red-600 pb-4">
+            <h1 class="text-3xl sm:text-4xl font-extrabold text-gray-800">
+                ART: Análisis de Riesgos de la Tarea (Chequeo Pre-Tarea)
+            </h1>
+        </header>
+
+        <!-- Sección I: ETAPA 1 -->
+        <section class="mb-10" id="etapa1-section">
+            <h2 class="text-2xl font-bold text-red-700 mb-6 border-b-2 border-red-700 pb-2">I) ETAPA 1</h2>
+            
+            <!-- Subsección 1.1: ANTECEDENTES DEL TRABAJO (CON FIRMA) -->
+            <div class="p-5 bg-gray-50 rounded-lg border border-gray-200 mb-8" id="subseccion-1-1">
+                 <h3 class="text-xl font-semibold text-gray-700 mb-4 border-b pb-2">1.1) ANTECEDENTES DEL TRABAJO</h3>
+            
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <!-- Fila 1: Empresa y Supervisor -->
+                    <input type="text" id="empresa" placeholder="NOMBRE DE LA EMPRESA" class="p-3 border rounded-lg focus:ring-red-500 focus:border-red-500 col-span-1 uppercase">
+                    <input type="text" id="supervisor" placeholder="NOMBRE DEL SUPERVISOR RESPONSABLE DEL TRABAJO" class="p-3 border rounded-lg focus:ring-red-500 focus:border-red-500 col-span-1 uppercase">
+
+                    <!-- Fila 2: Área de Trabajo y Lugar Específico -->
+                    <input type="text" id="area" placeholder="ÁREA DE TRABAJO" class="p-3 border rounded-lg focus:ring-red-500 focus:border-red-500 col-span-1 uppercase">
+                    <input type="text" id="lugar_especifico" placeholder="LUGAR ESPECÍFICO" class="p-3 border rounded-lg focus:ring-red-500 focus:border-red-500 col-span-1 uppercase">
+
+                    <!-- Fila 3: Fecha, Hora Inicio, Hora Término -->
+                    <input type="date" id="fecha" placeholder="FECHA" class="p-3 border rounded-lg focus:ring-red-500 focus:border-red-500">
+                    
+                    <div class="grid grid-cols-2 gap-4">
+                        <input type="time" id="hora_inicio" placeholder="HORA DE INICIO" class="p-3 border rounded-lg focus:ring-red-500 focus:border-red-500" title="Hora de Inicio">
+                        <input type="time" id="hora_termino" placeholder="HORA DE TÉRMINO" class="p-3 border rounded-lg focus:ring-red-500 focus:border-red-500" title="Hora de Término">
+                    </div>
+                </div>
+                
+                <textarea id="descripcion" placeholder="DESCRIPCIÓN DE LA TAREA (Detallada)" rows="3" class="mt-4 w-full p-3 border rounded-lg focus:ring-red-500 focus:border-red-500 uppercase"></textarea>
+
+                <!-- Campo de Firma (Nuevo) -->
+                <div class="mt-4 border-t pt-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">FIRMA DEL SUPERVISOR RESPONSABLE</label>
+                    <div id="signature-display-box" onclick="openSignatureModal()">
+                        <img id="signature-image" src="" alt="Firma digital" class="hidden">
+                        <span id="signature-placeholder">Clic aquí para firmar</span>
+                    </div>
+                    <!-- Almacenamiento oculto de la firma en Base64 -->
+                    <input type="hidden" id="firma_base64" value="">
+                </div>
+             </div>
+
+            <!-- Subsección 1.2: DE LOS TRABAJADORES: CONTESTE CADA PREGUNTA -->
+            <div class="p-5 bg-red-50 rounded-lg border border-red-200 mb-8" id="subseccion-1-2">
+                <h3 class="text-xl font-semibold text-red-600 mb-4 border-b border-red-300 pb-2">1.2) DE LOS TRABAJADORES: CONTESTE CADA PREGUNTA</h3>
+
+                <!-- Alerta de "NO INICIAR" para 1.2 -->
+                <div id="no-iniciar-alert-1-2" class="hidden p-4 mb-4 text-sm text-yellow-800 rounded-lg bg-yellow-100" role="alert">
+                    <svg class="flex-shrink-0 inline w-4 h-4 me-3" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M10 .5a9.5 9.5 0 1 0 9.5 9.5A9.51 9.51 0 0 0 10 .5ZM10 15a1 1 0 1 1 0-2 1 1 0 0 1 0 2Zm1-4a1 1 0 0 1-2 0V6a1 1 0 0 1 2 0v5Z"/>
+                    </svg>
+                    <span class="font-medium">ATENCIÓN:</span> UN "NO" EN CUALQUIERA DE LAS PREGUNTAS SIGNIFICA <span class="warning-text">NO INICIAR LA TAREA</span> Y DAR AVISO AL SUPERVISOR.
+                </div>
+
+                <div id="check-list-1-2">
+                    <!-- Pregunta 1 (1.2) -->
+                    <div class="flex items-center justify-between py-3 border-b border-red-100" data-pregunta="condiciones_fisicas">
+                        <label class="text-gray-700 text-base flex-1 mr-4">1. ¿Me encuentro en condiciones físicas y psicológicas para realizar la tarea?</label>
+                        <div class="flex space-x-4">
+                            <button data-answer="Si" class="answer-btn-1-2 text-white bg-green-500 hover:bg-green-600 font-medium rounded-lg text-sm px-4 py-2 transition duration-150">Sí</button>
+                            <button data-answer="No" class="answer-btn-1-2 text-white bg-red-500 hover:bg-red-600 font-medium rounded-lg text-sm px-4 py-2 transition duration-150">No</button>
+                        </div>
+                    </div>
+                    <!-- Pregunta 2 (1.2) -->
+                    <div class="flex items-center justify-between py-3 border-b border-red-100" data-pregunta="condiciones_entorno">
+                        <label class="text-gray-700 text-base flex-1 mr-4">2. ¿Las condiciones del entorno permiten realizar mi trabajo de manera segura?</label>
+                        <div class="flex space-x-4">
+                            <button data-answer="Si" class="answer-btn-1-2 text-white bg-green-500 hover:bg-green-600 font-medium rounded-lg text-sm px-4 py-2 transition duration-150">Sí</button>
+                            <button data-answer="No" class="answer-btn-1-2 text-white bg-red-500 hover:bg-red-600 font-medium rounded-lg text-sm px-4 py-2 transition duration-150">No</button>
+                        </div>
+                    </div>
+                    <!-- Pregunta 3 (1.2) -->
+                    <div class="flex items-center justify-between py-3 border-b border-red-100" data-pregunta="areas_condiciones">
+                        <label class="text-gray-700 text-base flex-1 mr-4">3. ¿Verifiqué que las áreas de desplazamiento y trabajo se encuentran en condiciones?</label>
+                        <div class="flex space-x-4">
+                            <button data-answer="Si" class="answer-btn-1-2 text-white bg-green-500 hover:bg-green-600 font-medium rounded-lg text-sm px-4 py-2 transition duration-150">Sí</button>
+                            <button data-answer="No" class="answer-btn-1-2 text-white bg-red-500 hover:bg-red-600 font-medium rounded-lg text-sm px-4 py-2 transition duration-150">No</button>
+                        </div>
+                    </div>
+                    <!-- Pregunta 4 (1.2) -->
+                    <div class="flex items-center justify-between py-3 border-b border-red-100" data-pregunta="epp_especificos">
+                        <label class="text-gray-700 text-base flex-1 mr-4">4. ¿Poseo todos los elementos de protección personal (EPP) específicos para la tarea?</label>
+                        <div class="flex space-x-4">
+                            <button data-answer="Si" class="answer-btn-1-2 text-white bg-green-500 hover:bg-green-600 font-medium rounded-lg text-sm px-4 py-2 transition duration-150">Sí</button>
+                            <button data-answer="No" class="answer-btn-1-2 text-white bg-red-500 hover:bg-red-600 font-medium rounded-lg text-sm px-4 py-2 transition duration-150">No</button>
+                        </div>
+                    </div>
+                    <!-- Pregunta 5 (1.2) -->
+                    <div class="flex items-center justify-between py-3 border-b border-red-100" data-pregunta="equipos_herramientas">
+                        <label class="text-gray-700 text-base flex-1 mr-4">5. ¿Dispongo de equipos y herramientas apropiadas, en buen estado y con inspección al día?</label>
+                        <div class="flex space-x-4">
+                            <button data-answer="Si" class="answer-btn-1-2 text-white bg-green-500 hover:bg-green-600 font-medium rounded-lg text-sm px-4 py-2 transition duration-150">Sí</button>
+                            <button data-answer="No" class="answer-btn-1-2 text-white bg-red-500 hover:bg-red-600 font-medium rounded-lg text-sm px-4 py-2 transition duration-150">No</button>
+                        </div>
+                    </div>
+                    <!-- Pregunta 6 (1.2) -->
+                    <div class="flex items-center justify-between py-3" data-pregunta="actuar_emergencia">
+                        <label class="text-gray-700 text-base flex-1 mr-4">6. ¿Sé cómo activar y actuar ante una emergencia?</label>
+                        <div class="flex space-x-4">
+                            <button data-answer="Si" class="answer-btn-1-2 text-white bg-green-500 hover:bg-green-600 font-medium rounded-lg text-sm px-4 py-2 transition duration-150">Sí</button>
+                            <button data-answer="No" class="answer-btn-1-2 text-white bg-red-500 hover:bg-red-600 font-medium rounded-lg text-sm px-4 py-2 transition duration-150">No</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Subsección 1.3: DE LA TAREA: CONTESTE CADA PREGUNTA -->
+            <div class="p-5 bg-blue-50 rounded-lg border border-blue-200 mb-8" id="subseccion-1-3">
+                <h3 class="text-xl font-semibold text-blue-600 mb-4 border-b border-blue-300 pb-2">1.3) DE LA TAREA: CONTESTE CADA PREGUNTA</h3>
+
+                <!-- Pregunta 1 (1.3) -->
+                <div class="py-3 border-b border-blue-100" data-pregunta="capacitado_prevencion">
+                    <label class="text-gray-700 text-base flex-1 mr-4 block mb-2">1. ¿Estoy capacitado(a) y conozco las medidas de prevención que mi empleador ha definido para ejecutar mi trabajo o tarea de manera correcta y segura?</label>
+                    
+                    <div class="flex justify-start space-x-4">
+                        <button data-answer="Si" class="answer-btn-1-3 text-white bg-green-500 hover:bg-green-600 font-medium rounded-lg text-sm px-4 py-2 transition duration-150">Sí</button>
+                        <button data-answer="No" class="answer-btn-1-3 text-white bg-red-500 hover:bg-red-600 font-medium rounded-lg text-sm px-4 py-2 transition duration-150">No</button>
+                    </div>
+                    
+                    <!-- Advertencia específica para la pregunta 1.3.1 -->
+                    <p class="text-xs text-red-600 font-semibold mt-2">UN "NO" A ESTA PREGUNTA SIGNIFICA <span class="warning-text">NO INICIAR LA TAREA</span> Y DAR AVISO A SU SUPERVISIÓN.</p>
+                </div>
+
+                <!-- Pregunta 2 (1.3) con campo de tipeo condicional -->
+                <div class="py-3 border-b border-blue-100" data-pregunta="documento_regula">
+                    <label class="text-gray-700 text-base flex-1 mr-4 block mb-2">2. ¿Existe algún documento que regule mi trabajo o tarea? Manual, reglamento, procedimiento, instructivo de trabajo u otro.</label>
+                    <div class="flex justify-start space-x-4">
+                        <button data-answer="Si" class="answer-btn-1-3 text-white bg-green-500 hover:bg-green-600 font-medium rounded-lg text-sm px-4 py-2 transition duration-150">Sí</button>
+                        <button data-answer="No" class="answer-btn-1-3 text-white bg-red-500 hover:bg-red-600 font-medium rounded-lg text-sm px-4 py-2 transition duration-150">No</button>
+                    </div>
+                    
+                    <!-- Campo de Tipeo Condicional -->
+                    <textarea id="documento_tipo" placeholder="Indique cuál: Manual, procedimiento, instructivo, etc." rows="1" class="hidden mt-2 w-full p-2 border rounded-lg focus:ring-blue-500 focus:border-blue-500 text-sm"></textarea>
+                </div>
+
+                <!-- Pregunta 3 (1.3) -->
+                <div class="py-3" data-pregunta="alcance_actividades">
+                    <label class="text-gray-700 text-base flex-1 mr-4 block mb-2">3. ¿El manual, reglamento, procedimiento, instructivo u otro incluye todas las actividades (alcance) a desarrollar en terreno?</label>
+                    <div class="flex justify-start space-x-4">
+                        <button data-answer="Si" class="answer-btn-1-3 text-white bg-green-500 hover:bg-green-600 font-medium rounded-lg text-sm px-4 py-2 transition duration-150">Sí</button>
+                        <button data-answer="No" class="answer-btn-1-3 text-white bg-red-500 hover:bg-red-600 font-medium rounded-lg text-sm px-4 py-2 transition duration-150">No</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Subsección 1.4: Estrategias de Control -->
+            <div class="p-5 bg-teal-50 rounded-lg border border-teal-200" id="subseccion-1-4">
+                <h3 class="text-xl font-semibold text-teal-700 mb-4 border-b border-teal-300 pb-2">1.4) Verificar si aplica una o más Estrategias de Control, seleccionando la casilla:</h3>
+
+                <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-7 gap-4" id="estrategias-grid">
+                    <!-- Casilla de control de ejemplo -->
+                    <div class="strategy-box" data-strategy="Aislamiento">
+                        <label class="flex flex-col items-center justify-center p-2 h-full w-full">
+                            <span class="text-sm">Aislamiento</span>
+                            <span class="text-xs font-normal text-gray-500">(Control de Ingeniería)</span>
+                            <input type="checkbox" data-strategy-name="Aislamiento" class="strategy-checkbox" onchange="toggleStrategyBox(this)">
+                        </label>
+                    </div>
+                    <!-- Casillas de ejemplo adicionales -->
+                    <div class="strategy-box" data-strategy="Señalización">
+                        <label class="flex flex-col items-center justify-center p-2 h-full w-full">
+                            <span class="text-sm">Señalización</span>
+                            <span class="text-xs font-normal text-gray-500">(Control Administrativo)</span>
+                            <input type="checkbox" data-strategy-name="Señalización" class="strategy-checkbox" onchange="toggleStrategyBox(this)">
+                        </label>
+                    </div>
+                    <div class="strategy-box" data-strategy="Permiso de Trabajo">
+                        <label class="flex flex-col items-center justify-center p-2 h-full w-full">
+                            <span class="text-sm">Permiso de Trabajo</span>
+                            <span class="text-xs font-normal text-gray-500">(Control Administrativo)</span>
+                            <input type="checkbox" data-strategy-name="Permiso de Trabajo" class="strategy-checkbox" onchange="toggleStrategyBox(this)">
+                        </label>
+                    </div>
+                    <div class="strategy-box" data-strategy="EPP">
+                        <label class="flex flex-col items-center justify-center p-2 h-full w-full">
+                            <span class="text-sm">Uso de EPP</span>
+                            <span class="text-xs font-normal text-gray-500">(Control de EPP)</span>
+                            <input type="checkbox" data-strategy-name="EPP" class="strategy-checkbox" onchange="toggleStrategyBox(this)">
+                        </label>
+                    </div>
+                </div>
+            </div>
+            
+        </section>
+
+        <!-- Pie de página, Botones de Previsualización y Historial -->
+        <footer class="mt-10 pt-6 border-t border-gray-300 text-center">
+            <button onclick="showPdfPreview()" id="preview-art-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-extrabold py-3 px-8 rounded-xl shadow-lg transition duration-300 transform hover:scale-105">
+                Generar PDF y Previsualizar
+            </button>
+            <p class="text-sm text-gray-500 mt-4">Se generará el documento para que pueda revisarlo y descargarlo.</p>
+
+            <button onclick="loadArtHistory()" id="load-history-btn" class="mt-4 bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-5 rounded-lg shadow-md transition duration-150">
+                Ver Historial de ARTs Guardados
+            </button>
+        </footer>
+    </div>
+
+    <!-- Modal para Captura de Firma -->
+    <div id="signature-modal" class="fixed inset-0 bg-gray-600 bg-opacity-75 hidden items-center justify-center p-4 z-50">
+        <!-- Contenedor del Modal ajustado para ocupar más espacio en móvil -->
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-lg p-6 flex flex-col max-h-[95vh]">
+            <div class="flex justify-between items-center border-b pb-3 mb-4 flex-shrink-0">
+                <h3 class="text-2xl font-bold text-gray-800">Firma Digital del Supervisor</h3>
+            </div>
+            
+            <p class="text-sm text-gray-600 mb-3 flex-shrink-0">Firme dentro del recuadro usando su dedo o stylus. La firma es obligatoria.</p>
+
+            <!-- CANVAS ELEMENT: El recuadro es flexible en altura para modo horizontal -->
+            <div class="flex-grow min-h-[150px] mb-4">
+                <canvas id="signature-canvas" class="w-full h-full border-4 border-dashed rounded-lg" style="height: 100%;"></canvas>
+            </div>
+
+
+            <div class="flex justify-between mt-4 space-x-3 flex-shrink-0">
+                <button onclick="clearSignatureCanvas()" class="flex-1 bg-yellow-500 hover:bg-yellow-600 text-white font-medium py-2 rounded-lg transition duration-150">
+                    Borrar Firma
+                </button>
+                <button onclick="saveSignature()" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 rounded-lg transition duration-150">
+                    Guardar y Cerrar
+                </button>
+                <button onclick="closeSignatureModal()" class="flex-1 bg-gray-400 hover:bg-gray-500 text-white font-medium py-2 rounded-lg transition duration-150">
+                    Cancelar
+                </button>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- Modal para Previsualización (Nuevo con formato fijo) -->
+    <div id="pdf-preview-modal" class="fixed inset-0 bg-gray-800 bg-opacity-90 hidden items-start justify-center pt-4 z-40 overflow-y-auto">
+        <!-- Wrapper principal sin limite de ancho para permitir el scroll horizontal de la hoja grande -->
+        <div class="w-full min-h-screen flex flex-col items-center pb-10">
+            
+            <!-- Barra Superior de Acciones (Flotante o fija arriba) -->
+            <div class="sticky top-0 w-full bg-white shadow-md z-50 p-4 flex justify-between items-center max-w-4xl rounded-b-lg mb-4">
+                <h3 class="text-lg font-bold text-gray-800">Vista Previa del PDF</h3>
+                <div class="flex space-x-2">
+                    <button onclick="closePreviewModal()" class="text-gray-600 hover:text-gray-800 px-3 py-1 rounded border border-gray-300">
+                        Cerrar
+                    </button>
+                    <button onclick="saveArtAsPdf()" class="bg-red-600 hover:bg-red-700 text-white font-bold px-4 py-1 rounded shadow-lg">
+                        ⬇️ Descargar PDF
+                    </button>
+                </div>
+            </div>
+
+            <!-- Scroll Wrapper para la hoja de papel -->
+            <!-- Esto permite que en el celular hagas scroll horizontal para ver toda la hoja de 800px -->
+            <div class="preview-scroll-wrapper">
+                <div id="pdf-content" class="paper-sheet">
+                    <!-- Contenido generado por JS -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- Modal para Historial de ARTs -->
+    <div id="history-modal" class="fixed inset-0 bg-gray-600 bg-opacity-75 hidden items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[80vh] overflow-y-auto p-6">
+            <div class="flex justify-between items-center border-b pb-3 mb-4">
+                <h3 class="text-2xl font-bold text-gray-800">Historial de Chequeos Pre-Tarea</h3>
+                <button onclick="document.getElementById('history-modal').classList.add('hidden')" class="text-gray-500 hover:text-gray-800">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+            <div id="history-list" class="space-y-4">
+                <!-- La lista de ARTs cargados se insertará aquí -->
+                <p id="no-history-message" class="text-gray-500 italic hidden">No hay chequeos guardados todavía.</p>
+            </div>
+        </div>
+    </div>
+
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, addDoc, onSnapshot, collection, query, where, getDocs, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Global variables for Firebase
+        let db;
+        let auth;
+        let userId = null;
+        const ART_COLLECTION_NAME = 'arts_chequeos'; 
+
+        // --- SIGNATURE CANVAS VARIABLES ---
+        let canvas, ctx;
+        let isDrawing = false;
+        let lastX = 0;
+        let lastY = 0;
+        let signatureDataURL = ''; // Almacena la firma en Base64
+        let isModalOpen = false; // Nuevo estado para controlar el modal de firma
+
+        // --- FIREBASE INITIALIZATION AND AUTHENTICATION ---
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+        /**
+         * Initializes Firebase and authenticates the user.
+         */
+        async function initializeFirebase() {
+            setLogLevel('Debug');
+            if (Object.keys(firebaseConfig).length === 0) {
+                showMessage('Error: Configuración de Firebase no disponible.', 'error');
+                return;
+            }
+
+            try {
+                const app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+                
+                document.getElementById('loading-indicator').classList.remove('hidden');
+
+                // 1. Authenticate using the custom token or anonymously
+                if (initialAuthToken) {
+                    await signInWithCustomToken(auth, initialAuthToken);
+                } else {
+                    await signInAnonymously(auth);
+                }
+
+                // 2. Wait for the Auth State to be set
+                onAuthStateChanged(auth, (user) => {
+                    if (user) {
+                        userId = user.uid;
+                        document.getElementById('user-id').textContent = userId;
+                        showMessage('¡Conexión a la base de datos exitosa!', 'success');
+                        document.getElementById('loading-indicator').classList.add('hidden');
+                        
+                        // Start listeners or load data after successful auth
+                        setupEventListeners();
+                        initializeSignatureCanvas(); // Inicializar Canvas
+                        
+                    } else {
+                        // User is signed out (this shouldn't happen immediately after sign in)
+                        userId = null;
+                        document.getElementById('user-id').textContent = 'Anónimo';
+                    }
+                });
+
+            } catch (error) {
+                console.error("Error during Firebase initialization or sign-in:", error);
+                showMessage(`Error de conexión: ${error.message}`, 'error');
+                document.getElementById('loading-indicator').classList.add('hidden');
+            }
+        }
+
+        // --- SIGNATURE CANVAS LOGIC ---
+
+        /**
+         * Configura el canvas y sus listeners para la firma.
+         */
+        function initializeSignatureCanvas() {
+            canvas = document.getElementById('signature-canvas');
+            ctx = canvas.getContext('2d');
+            
+            // Estilos del trazo
+            ctx.strokeStyle = '#000000';
+            ctx.lineJoin = 'round';
+            ctx.lineCap = 'round';
+            ctx.lineWidth = 3;
+
+            // Listeners para ratón
+            canvas.addEventListener('mousedown', (e) => startDrawing(e.offsetX, e.offsetY));
+            canvas.addEventListener('mousemove', (e) => draw(e.offsetX, e.offsetY));
+            canvas.addEventListener('mouseup', stopDrawing);
+            canvas.addEventListener('mouseout', stopDrawing);
+
+            // Listeners para tacto (móviles)
+            canvas.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                const rect = canvas.getBoundingClientRect();
+                const x = e.touches[0].clientX - rect.left;
+                const y = e.touches[0].clientY - rect.top;
+                startDrawing(x, y);
+            });
+            canvas.addEventListener('touchmove', (e) => {
+                e.preventDefault();
+                const rect = canvas.getBoundingClientRect();
+                const x = e.touches[0].clientX - rect.left;
+                const y = e.touches[0].clientY - rect.top;
+                draw(x, y);
+            });
+            canvas.addEventListener('touchend', stopDrawing);
+        }
+        
+        /**
+         * Ajusta el tamaño real del canvas (atributos width/height) al tamaño visual.
+         * Esto es CRUCIAL para evitar distorsiones al rotar el dispositivo.
+         */
+        function adjustCanvasSize() {
+            if (!canvas || !isModalOpen) return;
+            
+            // Obtener el tamaño visual (CSS) actual del canvas
+            const rect = canvas.getBoundingClientRect();
+            const newWidth = rect.width;
+            const newHeight = rect.height;
+
+            // Guardar la imagen actual antes de redimensionar
+            const currentData = signatureDataURL; 
+
+            if (newWidth > 0 && newHeight > 0 && (canvas.width !== newWidth || canvas.height !== newHeight)) {
+                
+                // Redimensionar el canvas (buffer de dibujo)
+                canvas.width = newWidth;
+                canvas.height = newHeight;
+                
+                // Restaurar estilos de dibujo
+                ctx.strokeStyle = '#000000';
+                ctx.lineJoin = 'round';
+                ctx.lineCap = 'round';
+                ctx.lineWidth = 3;
+
+                // Si había una firma, redibujarla para evitar pérdida
+                if (currentData) {
+                    drawSignatureFromDataURL(currentData);
+                } else {
+                    clearSignatureCanvas();
+                }
+            }
+        }
+
+        function startDrawing(x, y) {
+            isDrawing = true;
+            [lastX, lastY] = [x, y];
+        }
+
+        function draw(x, y) {
+            if (!isDrawing) return;
+            ctx.beginPath();
+            ctx.moveTo(lastX, lastY);
+            ctx.lineTo(x, y);
+            ctx.stroke();
+            [lastX, lastY] = [x, y];
+        }
+
+        function stopDrawing() {
+            isDrawing = false;
+        }
+
+        /**
+         * Abre la ventana modal de firma, ajusta el canvas y añade el listener de resize.
+         */
+        window.openSignatureModal = function() {
+            isModalOpen = true;
+            document.getElementById('signature-modal').classList.remove('hidden');
+
+            // Ajustar el canvas después de que el modal sea visible
+            setTimeout(adjustCanvasSize, 50); 
+            
+            // Añadir listener para manejar la rotación/redimensionamiento en tiempo real
+            window.addEventListener('resize', adjustCanvasSize);
+        }
+        
+        /**
+         * Cierra la ventana modal de firma y elimina el listener de resize.
+         */
+        function closeSignatureModal() {
+            isModalOpen = false;
+            document.getElementById('signature-modal').classList.add('hidden');
+            window.removeEventListener('resize', adjustCanvasSize);
+        }
+
+        /**
+         * Borra el contenido del canvas.
+         */
+        window.clearSignatureCanvas = function() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+
+        /**
+         * Guarda la firma del canvas y la muestra en el formulario.
+         */
+        window.saveSignature = function() {
+            // Verificar si el canvas está vacío (solo fondo blanco)
+            const tempCanvas = document.createElement('canvas');
+            tempCanvas.width = canvas.width;
+            tempCanvas.height = canvas.height;
+            const tempCtx = tempCanvas.getContext('2d');
+            tempCtx.fillStyle = '#FFFFFF';
+            tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
+            const blankDataURL = tempCanvas.toDataURL('image/png');
+            
+            signatureDataURL = canvas.toDataURL('image/png');
+
+            if (signatureDataURL === blankDataURL) {
+                showMessage('Error: La firma no puede estar vacía.', 'error');
+                return;
+            }
+            
+            // Almacenar en el campo oculto
+            document.getElementById('firma_base64').value = signatureDataURL;
+            
+            // Mostrar en el formulario
+            const imgElement = document.getElementById('signature-image');
+            imgElement.src = signatureDataURL;
+            imgElement.classList.remove('hidden');
+            document.getElementById('signature-placeholder').classList.add('hidden');
+            
+            closeSignatureModal();
+            showMessage('Firma guardada con éxito.', 'success');
+        }
+        
+        /**
+         * Dibuja una firma Base64 en el canvas.
+         * @param {string} dataURL - La cadena Base64 de la firma.
+         */
+        function drawSignatureFromDataURL(dataURL) {
+            clearSignatureCanvas();
+            if (!dataURL || dataURL === 'N/A') return;
+            
+            const img = new Image();
+            img.onload = function() {
+                // Escalar la imagen para que quepa en el canvas sin distorsión
+                const scaleX = canvas.width / img.width;
+                const scaleY = canvas.height / img.height;
+                const scale = Math.min(scaleX, scaleY);
+                const x = (canvas.width / 2) - (img.width / 2) * scale;
+                const y = (canvas.height / 2) - (img.height / 2) * scale;
+                
+                // Asegurarse de que el canvas esté blanco de fondo antes de dibujar la imagen
+                ctx.fillStyle = '#FFFFFF';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                ctx.drawImage(img, x, y, img.width * scale, img.height * scale);
+            };
+            img.src = dataURL;
+        }
+
+
+        // --- FORM LOGIC ---
+
+        /**
+         * Toggles the visual state of the strategy box when the checkbox changes.
+         * @param {HTMLInputElement} checkbox - The checkbox element.
+         */
+        window.toggleStrategyBox = function(checkbox) {
+            const box = checkbox.closest('.strategy-box');
+            if (checkbox.checked) {
+                box.classList.add('selected');
+            } else {
+                box.classList.remove('selected');
+            }
+        }
+
+        /**
+         * Sets up event listeners for pre-task checks (Sí/No buttons) for all sections.
+         */
+        function setupEventListeners() {
+            // Event listeners for section 1.2 and 1.3
+            document.querySelectorAll('#check-list-1-2 .answer-btn-1-2, #subseccion-1-3 .answer-btn-1-3').forEach(button => {
+                button.addEventListener('click', (event) => {
+                    handleAnswerClick(event.target);
+                });
+            });
+            
+            // Initial setup for the strategy box style
+            document.querySelectorAll('.strategy-checkbox').forEach(checkbox => {
+                toggleStrategyBox(checkbox);
+            });
+        }
+        
+        /**
+         * Handles the visual state and warning checks for an answer button click.
+         * @param {HTMLElement} targetButton - The button that was clicked.
+         */
+        function handleAnswerClick(targetButton) {
+            const selectedAnswer = targetButton.getAttribute('data-answer');
+            const parentDiv = targetButton.closest('div[data-pregunta]');
+            const preguntaKey = parentDiv.getAttribute('data-pregunta');
+
+
+            // 1. Limpiar el estado visual de los botones en el grupo
+            parentDiv.querySelectorAll(`button`).forEach(btn => {
+                btn.classList.remove('btn-selected');
+                if (btn.getAttribute('data-answer') === 'Si') {
+                    btn.classList.replace('bg-green-700', 'bg-green-500');
+                } else {
+                    btn.classList.replace('bg-red-700', 'bg-red-500');
+                }
+            });
+
+            // 2. Aplicar el estado visual al botón seleccionado
+            targetButton.classList.add('btn-selected');
+            if (selectedAnswer === 'Si') {
+                targetButton.classList.replace('bg-green-500', 'bg-green-700');
+            } else {
+                targetButton.classList.replace('bg-red-500', 'bg-red-700');
+            }
+
+            // 3. Lógica específica para la pregunta 1.3.2 (documento_regula)
+            if (preguntaKey === 'documento_regula') {
+                const isSi = selectedAnswer === 'Si';
+                const textarea = document.getElementById('documento_tipo');
+                if (isSi) {
+                    textarea.classList.remove('hidden');
+                } else {
+                    textarea.classList.add('hidden');
+                    textarea.value = ''; // Limpiar si se oculta
+                }
+            }
+
+            // 4. Revisar si alguna respuesta es 'No' para mostrar la alerta
+            checkNoAnswers();
+        }
+
+        /**
+         * Checks if any 'No' answer is selected in the critical lists (1.2 and 1.3.1) and shows/hides the warning alert.
+         */
+        function checkNoAnswers() {
+            let hasNo = false;
+            
+            // Check list 1.2
+            const list12 = document.getElementById('check-list-1-2');
+            list12.querySelectorAll('div[data-pregunta]').forEach(div => {
+                const noButton = div.querySelector('button[data-answer="No"]');
+                if (noButton && noButton.classList.contains('btn-selected')) {
+                    hasNo = true;
+                }
+            });
+
+            // Check question 1.3.1 (capacitado_prevencion)
+            const q131Div = document.querySelector('div[data-pregunta="capacitado_prevencion"]');
+            const noButton131 = q131Div?.querySelector('button[data-answer="No"]');
+            if (noButton131 && noButton131.classList.contains('btn-selected')) {
+                 hasNo = true;
+            }
+
+            // Show/hide the main alert
+            const alertElement = document.getElementById('no-iniciar-alert-1-2');
+            if (hasNo) {
+                 alertElement.classList.remove('hidden');
+                 return true;
+            } else {
+                 alertElement.classList.add('hidden');
+                 return false;
+            }
+        }
+
+        // --- DATA RETRIEVAL AND STORAGE ---
+
+        /**
+         * Gathers all data from the form into a structured object.
+         * @param {boolean} checkFirma - If true, checks if the signature is present.
+         * @returns {object|null} The ART data object or null if validation fails.
+         */
+        function collectFormData(checkFirma = true) {
+            const firma = document.getElementById('firma_base64').value;
+            if (checkFirma && !firma) {
+                 showMessage('Error: La firma del supervisor es obligatoria para previsualizar/guardar.', 'error');
+                 return null;
+            }
+
+            // Validación de campos básicos
+            const requiredInputs = ['empresa', 'supervisor', 'area', 'lugar_especifico', 'fecha', 'hora_inicio', 'hora_termino', 'descripcion'];
+            for (const id of requiredInputs) {
+                if (!document.getElementById(id).value.trim()) {
+                    showMessage(`Error: El campo ${id.toUpperCase()} es obligatorio.`, 'error');
+                    return null;
+                }
+            }
+
+            const antecedentes = {
+                empresa: document.getElementById('empresa').value,
+                supervisor: document.getElementById('supervisor').value,
+                area: document.getElementById('area').value,
+                lugar_especifico: document.getElementById('lugar_especifico').value,
+                fecha: document.getElementById('fecha').value,
+                hora_inicio: document.getElementById('hora_inicio').value,
+                hora_termino: document.getElementById('hora_termino').value,
+                descripcion: document.getElementById('descripcion').value,
+                firma_base64: firma, // Incluir la firma
+            };
+
+            // Chequeo 1.2
+            const chequeo_trabajador = {};
+            let hasValidationError = false;
+            document.querySelectorAll('#check-list-1-2 > div').forEach(div => {
+                const key = div.getAttribute('data-pregunta');
+                const selectedButton = div.querySelector('.btn-selected');
+                if (!selectedButton) {
+                    showMessage(`Error: Debe contestar la pregunta sobre '${key}'.`, 'error');
+                    hasValidationError = true;
+                    return;
+                }
+                chequeo_trabajador[key] = selectedButton ? selectedButton.getAttribute('data-answer') : 'N/A';
+            });
+            if (hasValidationError) return null;
+
+            
+            // Chequeo 1.3
+            const chequeo_tarea = {};
+            document.querySelectorAll('#subseccion-1-3 > div').forEach(div => {
+                const key = div.getAttribute('data-pregunta');
+                const selectedButton = div.querySelector('.btn-selected');
+                if (!selectedButton) {
+                    showMessage(`Error: Debe contestar la pregunta sobre '${key}'.`, 'error');
+                    hasValidationError = true;
+                    return;
+                }
+                chequeo_tarea[key] = selectedButton ? selectedButton.getAttribute('data-answer') : 'N/A';
+            });
+            if (hasValidationError) return null;
+            
+            // Añadir campo de tipeo condicional para 1.3.2
+            const docInput = document.getElementById('documento_tipo');
+            if (docInput.classList.contains('hidden')) {
+                 chequeo_tarea.documento_tipo = '';
+            } else {
+                 chequeo_tarea.documento_tipo = docInput.value;
+            }
+
+            // Estrategias de Control 1.4
+            const estrategias_control = [];
+            document.querySelectorAll('.strategy-checkbox').forEach(checkbox => {
+                if (checkbox.checked) {
+                    estrategias_control.push(checkbox.getAttribute('data-strategy-name'));
+                }
+            });
+            
+            return {
+                antecedentes,
+                chequeo: {
+                    trabajador: chequeo_trabajador,
+                    tarea: chequeo_tarea
+                },
+                estrategias_control,
+                timestamp: new Date().toISOString(),
+                savedBy: userId
+            };
+        }
+        
+        /**
+         * Helper function to render the checklist HTML.
+         */
+        function renderChecklist(data, questions, keys) {
+            let html = '';
+            keys.forEach((key, index) => {
+                const answer = data[key] || 'N/A';
+                const resultClass = answer === 'Si' ? 'pdf-check-result-si' : (answer === 'No' ? 'pdf-check-result-no' : 'text-gray-400');
+                // Buscamos la pregunta original usando el índice (asumiendo que keys y questions tienen el mismo orden)
+                const questionText = questions[index];
+
+                html += `
+                    <div class="pdf-check-item">
+                        <span class="flex-1">${questionText}</span>
+                        <span class="${resultClass}">${answer}</span>
+                    </div>
+                `;
+            });
+            return html;
+        }
+
+        /**
+         * Generates the HTML content for the PDF preview modal.
+         * @param {object} artData - The collected form data.
+         * @returns {string} The HTML string for the preview.
+         */
+        function generatePdfHtml(artData) {
+            const { antecedentes, chequeo, estrategias_control, timestamp } = artData;
+            
+            // Nota: No ponemos clases de contenedor aquí porque el contenedor externo (.paper-sheet) ya tiene el ancho fijo
+            let html = `
+                <header class="text-center mb-6">
+                    <h1 class="text-2xl font-extrabold text-red-700 uppercase">ANÁLISIS DE RIESGOS DE LA TAREA (ART)</h1>
+                    <p class="text-xs text-gray-500 mt-2">Generado: ${new Date(timestamp).toLocaleDateString()} ${new Date(timestamp).toLocaleTimeString()} | Usuario: ${userId || 'Anon'}</p>
+                </header>
+
+                <!-- 1.1 ANTECEDENTES DEL TRABAJO -->
+                <h2 class="pdf-section-title">1.1) ANTECEDENTES DEL TRABAJO</h2>
+                <div class="space-y-0">
+                    <div class="pdf-data-item"><span class="pdf-data-label">EMPRESA:</span><span class="pdf-data-value">${antecedentes.empresa.toUpperCase()}</span></div>
+                    <div class="pdf-data-item"><span class="pdf-data-label">SUPERVISOR:</span><span class="pdf-data-value">${antecedentes.supervisor.toUpperCase()}</span></div>
+                    <div class="pdf-data-item"><span class="pdf-data-label">ÁREA:</span><span class="pdf-data-value">${antecedentes.area.toUpperCase()}</span></div>
+                    <div class="pdf-data-item"><span class="pdf-data-label">LUGAR:</span><span class="pdf-data-value">${antecedentes.lugar_especifico.toUpperCase()}</span></div>
+                    <div class="pdf-data-item"><span class="pdf-data-label">FECHA / HORA:</span><span class="pdf-data-value">${antecedentes.fecha} | ${antecedentes.hora_inicio} - ${antecedentes.hora_termino}</span></div>
+                    <div class="pt-2"><span class="pdf-data-label block mb-1">DESCRIPCIÓN:</span><p class="text-sm border p-2 bg-gray-50">${antecedentes.descripcion.toUpperCase()}</p></div>
+                </div>
+
+                <!-- Firma -->
+                <div class="mt-2 flex justify-end">
+                    <div class="w-1/2 text-center">
+                        <div class="pdf-signature-box">
+                            <img src="${antecedentes.firma_base64}" alt="Firma Digital" class="pdf-signature-image">
+                        </div>
+                        <span class="text-xs font-bold text-gray-600 mt-1 block">FIRMA SUPERVISOR</span>
+                    </div>
+                </div>
+
+                <!-- 1.2 DE LOS TRABAJADORES -->
+                <h2 class="pdf-section-title text-red-700 border-red-700">1.2) DE LOS TRABAJADORES</h2>
+                <div class="text-sm">
+                    ${renderChecklist(chequeo.trabajador, [
+                        "1. ¿Condiciones físicas/psicológicas aptas?",
+                        "2. ¿Entorno seguro?",
+                        "3. ¿Áreas de trabajo en condiciones?",
+                        "4. ¿Posee EPP específicos?",
+                        "5. ¿Equipos/Herramientas ok?",
+                        "6. ¿Conoce plan de emergencia?"
+                    ], ['condiciones_fisicas', 'condiciones_entorno', 'areas_condiciones', 'epp_especificos', 'equipos_herramientas', 'actuar_emergencia'])}
+                </div>
+                
+                <p class="text-xs text-red-600 font-bold mt-1">RESULTADO: ${checkNoAnswers() ? 'NO INICIAR (HAY RESPUESTAS "NO")' : 'APROBADO PARA INICIO'}</p>
+
+                <!-- 1.3 DE LA TAREA -->
+                <h2 class="pdf-section-title text-blue-700 border-blue-700">1.3) DE LA TAREA</h2>
+                <div class="text-sm">
+                    ${renderChecklist(chequeo.tarea, [
+                        "1. ¿Capacitado y conoce medidas preventivas?",
+                        "2. ¿Existe documento regulador (Procedimiento/Manual)?",
+                        "3. ¿El documento incluye todas las actividades?"
+                    ], ['capacitado_prevencion', 'documento_regula', 'alcance_actividades'])}
+                    
+                    ${chequeo.tarea.documento_tipo ? `<div class="pdf-data-item ml-4 text-xs"><span class="pdf-data-label">Doc:</span><span class="pdf-data-value text-left">${chequeo.tarea.documento_tipo.toUpperCase()}</span></div>` : ''}
+                </div>
+
+                <!-- 1.4 ESTRATEGIAS DE CONTROL -->
+                <h2 class="pdf-section-title text-teal-700 border-teal-700">1.4) CONTROLES APLICADOS</h2>
+                <div class="text-sm">
+                    ${estrategias_control.length > 0 
+                        ? `<ul class="grid grid-cols-2 gap-x-4 gap-y-1 list-disc ml-5 mt-1">${estrategias_control.map(e => `<li>${e}</li>`).join('')}</ul>`
+                        : `<p class="italic text-gray-500">Ninguno seleccionado.</p>`
+                    }
+                </div>
+            `;
+
+            return html;
+        }
+        
+        /**
+         * Prepares and displays the PDF preview modal.
+         */
+        window.showPdfPreview = function() {
+            const artData = collectFormData(true); // Requiere firma para previsualizar
+            if (!artData) {
+                // Mensaje de error ya mostrado en collectFormData
+                return;
+            }
+            
+            // Guardamos el ART en Firestore
+            saveArtToHistory(artData);
+
+            const pdfContentHtml = generatePdfHtml(artData);
+            document.getElementById('pdf-content').innerHTML = pdfContentHtml;
+            document.getElementById('pdf-preview-modal').classList.remove('hidden');
+        }
+
+        /**
+         * Closes the PDF preview modal.
+         */
+        window.closePreviewModal = function() {
+            document.getElementById('pdf-preview-modal').classList.add('hidden');
+        }
+
+        /**
+         * Uses html2canvas and jsPDF to generate and download the ART as a PDF file.
+         */
+        window.saveArtAsPdf = async function() {
+            // 1. Seleccionamos el elemento .paper-sheet que YA TIENE el formato de escritorio (800px)
+            const content = document.getElementById('pdf-content');
+            if (!content) {
+                showMessage('Error: No hay documento para descargar.', 'error');
+                return;
+            }
+
+            showMessage('Descargando documento...', 'info');
+
+            try {
+                // 2. Captura DIRECTA (sin clones ni trucos)
+                // Al tener un ancho fijo por CSS, html2canvas lo captura tal cual se ve.
+                const canvas = await html2canvas(content, { 
+                    scale: 1.5, // Calidad media/alta suficiente para A4
+                    useCORS: true,
+                    // No forzamos windowWidth porque el elemento ya tiene width fijo en CSS
+                });
+
+                // 3. Generar PDF
+                const imgData = canvas.toDataURL('image/png');
+                const { jsPDF } = window.jspdf;
+                
+                const pdf = new jsPDF('p', 'mm', 'a4');
+                const pdfWidth = pdf.internal.pageSize.getWidth();
+                const pdfHeight = pdf.internal.pageSize.getHeight();
+                
+                // Ajustar altura
+                const imgHeight = canvas.height * pdfWidth / canvas.width;
+                let heightLeft = imgHeight;
+                let position = 0;
+
+                pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, imgHeight);
+                heightLeft -= pdfHeight;
+
+                // Manejo de múltiples páginas si es muy largo
+                while (heightLeft > 0) {
+                    position = heightLeft - imgHeight;
+                    pdf.addPage();
+                    pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, imgHeight);
+                    heightLeft -= pdfHeight;
+                }
+                
+                const filename = `ART_${new Date().getTime()}.pdf`;
+                pdf.save(filename);
+                
+                showMessage('¡Archivo descargado!', 'success');
+                
+            } catch (error) {
+                console.error("Error al generar PDF:", error);
+                showMessage(`Error: ${error.message}`, 'error');
+            }
+        }
+        
+        /**
+         * Saves the current form data to Firestore.
+         */
+        async function saveArtToHistory(artData) {
+            if (!userId || !db) return; 
+
+            try {
+                const artsRef = collection(db, 'artifacts', appId, 'public', 'data', ART_COLLECTION_NAME);
+                await addDoc(artsRef, artData);
+                console.log("ART guardado en historial.");
+            } catch (error) {
+                console.error("Error al guardar el chequeo en el historial:", error);
+            }
+        }
+        
+        /**
+         * Loads the history of saved Pre-Task Check from Firestore for the current user.
+         */
+        window.loadArtHistory = async function() {
+            if (!userId || !db) {
+                showMessage('Error: Usuario no autenticado para cargar historial.', 'error');
+                return;
+            }
+            
+            const historyList = document.getElementById('history-list');
+            historyList.innerHTML = ''; // Limpiar lista anterior
+            document.getElementById('no-history-message').classList.add('hidden');
+            
+            try {
+                // Public Collection Path, filtered by savedBy == userId: /artifacts/{appId}/public/data/arts_chequeos
+                const artsRef = collection(db, 'artifacts', appId, 'public', 'data', ART_COLLECTION_NAME);
+                const q = query(artsRef, where("savedBy", "==", userId));
+                const querySnapshot = await getDocs(q);
+
+                if (querySnapshot.empty) {
+                    document.getElementById('no-history-message').classList.remove('hidden');
+                    showMessage('No se encontraron chequeos en tu historial.', 'info');
+                    document.getElementById('history-modal').classList.remove('hidden');
+                    return;
+                }
+                
+                const arts = [];
+                querySnapshot.forEach((docSnap) => {
+                    arts.push({ id: docSnap.id, ...docSnap.data() });
+                });
+
+                arts.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+
+                arts.forEach((art) => {
+                    const docId = art.id;
+                    const item = document.createElement('div');
+                    item.className = 'p-3 border rounded-lg shadow-sm hover:bg-gray-50 flex justify-between items-center';
+                    item.innerHTML = `
+                        <div>
+                            <p class="font-semibold text-gray-800">${art.antecedentes.area || 'Sin Área'} (${art.antecedentes.lugar_especifico || 'N/A'})</p>
+                            <p class="text-xs text-gray-500">${art.antecedentes.empresa || 'Sin Empresa'} | ${art.antecedentes.hora_inicio || '00:00'} - ${art.antecedentes.hora_termino || '00:00'}</p>
+                            <p class="text-xs text-gray-400 font-mono mt-1">Guardado: ${new Date(art.timestamp).toLocaleDateString()}</p>
+                        </div>
+                        <button onclick="loadArtToForm('${docId}')" class="bg-blue-500 hover:bg-blue-600 text-white font-medium py-1 px-3 rounded-lg text-sm transition duration-150">
+                            Cargar
+                        </button>
+                    `;
+                    historyList.appendChild(item);
+                });
+
+
+                document.getElementById('history-modal').classList.remove('hidden');
+
+            } catch (error) {
+                console.error("Error al cargar el historial:", error);
+                showMessage(`Error al cargar historial: ${error.message}`, 'error');
+            }
+        }
+
+        /**
+         * Loads a specific ART into the form for viewing/editing.
+         * @param {string} docId - The Firestore document ID.
+         */
+        window.loadArtToForm = async function(docId) {
+            document.getElementById('history-modal').classList.add('hidden');
+            if (!userId || !db) return;
+
+            try {
+                const artRef = doc(db, 'artifacts', appId, 'public', 'data', ART_COLLECTION_NAME, docId);
+                const docSnap = await getDoc(artRef);
+
+                if (!docSnap.exists()) {
+                    showMessage('Error: El chequeo solicitado no existe.', 'error');
+                    return;
+                }
+
+                const art = docSnap.data();
+                clearForm();
+                
+                // 1. Cargar Antecedentes
+                document.getElementById('empresa').value = art.antecedentes.empresa || '';
+                document.getElementById('supervisor').value = art.antecedentes.supervisor || '';
+                document.getElementById('area').value = art.antecedentes.area || '';
+                document.getElementById('lugar_especifico').value = art.antecedentes.lugar_especifico || '';
+                document.getElementById('fecha').value = art.antecedentes.fecha || '';
+                document.getElementById('hora_inicio').value = art.antecedentes.hora_inicio || '';
+                document.getElementById('hora_termino').value = art.antecedentes.hora_termino || '';
+                document.getElementById('descripcion').value = art.antecedentes.descripcion || '';
+                
+                // Cargar Firma
+                const firmaBase64 = art.antecedentes.firma_base64 || '';
+                if (firmaBase64) {
+                    document.getElementById('firma_base64').value = firmaBase64;
+                    const imgElement = document.getElementById('signature-image');
+                    imgElement.src = firmaBase64;
+                    imgElement.classList.remove('hidden');
+                    document.getElementById('signature-placeholder').classList.add('hidden');
+                    signatureDataURL = firmaBase64; // Actualizar variable global para el canvas
+                } else {
+                    signatureDataURL = '';
+                }
+
+                // 2. Cargar Chequeo del Trabajador (1.2)
+                document.querySelectorAll('#check-list-1-2 > div').forEach(div => {
+                    const key = div.getAttribute('data-pregunta');
+                    const answer = art.chequeo.trabajador[key];
+                    if (answer && answer !== 'N/A') {
+                        const button = div.querySelector(`button[data-answer="${answer}"]`);
+                        if (button) {
+                            handleAnswerClick(button); 
+                        }
+                    }
+                });
+
+                // 3. Cargar Chequeo de la Tarea (1.3)
+                 document.querySelectorAll('#subseccion-1-3 > div').forEach(div => {
+                    const key = div.getAttribute('data-pregunta');
+                    const answer = art.chequeo.tarea[key];
+                    if (answer && answer !== 'N/A') {
+                        const button = div.querySelector(`button[data-answer="${answer}"]`);
+                        if (button) {
+                            handleAnswerClick(button); 
+                        }
+                    }
+                });
+                // Cargar valor de campo de tipeo
+                const docInput = document.getElementById('documento_tipo');
+                docInput.value = art.chequeo.tarea.documento_tipo || '';
+                if (art.chequeo.tarea.documento_tipo) {
+                    docInput.classList.remove('hidden');
+                } else {
+                    docInput.classList.add('hidden');
+                }
+                
+                // 4. Cargar Estrategias de Control (1.4)
+                document.querySelectorAll('.strategy-checkbox').forEach(checkbox => {
+                    const strategyName = checkbox.getAttribute('data-strategy-name');
+                    const isChecked = art.estrategias_control.includes(strategyName);
+                    checkbox.checked = isChecked;
+                    toggleStrategyBox(checkbox); // Aplicar estilo visual
+                });
+
+                checkNoAnswers(); // Asegurar que la alerta 'NO INICIAR' esté correcta
+
+                
+                showMessage(`Chequeo ${docId.substring(0, 8)}... cargado con éxito.`, 'success');
+
+            } catch (error) {
+                console.error("Error al cargar chequeo:", error);
+                showMessage(`Error al cargar chequeo: ${error.message}`, 'error');
+            }
+        }
+        
+        /**
+         * Clears the entire form and resets pre-task checks.
+         */
+        function clearForm() {
+            // 1. Limpiar inputs de Antecedentes
+            document.getElementById('etapa1-section').querySelectorAll('input[type="text"], input[type="date"], input[type="time"], textarea').forEach(input => input.value = '');
+
+            // 2. Resetear Firma
+            document.getElementById('firma_base64').value = '';
+            document.getElementById('signature-image').classList.add('hidden');
+            document.getElementById('signature-placeholder').classList.remove('hidden');
+            signatureDataURL = ''; // Resetear variable global de firma
+
+            // 3. Resetear Chequeo de Condiciones (1.2 y 1.3)
+            document.querySelectorAll('#check-list-1-2 button, #subseccion-1-3 button').forEach(btn => {
+                btn.classList.remove('btn-selected');
+                if (btn.getAttribute('data-answer') === 'Si') {
+                    btn.classList.replace('bg-green-700', 'bg-green-500');
+                } else {
+                    btn.classList.replace('bg-red-700', 'bg-red-500');
+                }
+            });
+            document.getElementById('no-iniciar-alert-1-2').classList.add('hidden');
+            
+            // 4. Ocultar y limpiar campo condicional 1.3.2
+            const docInput = document.getElementById('documento_tipo');
+            docInput.classList.add('hidden');
+            docInput.value = '';
+            
+            // 5. Resetear Estrategias (1.4)
+            document.querySelectorAll('.strategy-checkbox').forEach(checkbox => {
+                checkbox.checked = false;
+                toggleStrategyBox(checkbox); // Aplicar estilo visual
+            });
+        }
+
+
+        // --- UTILITY FUNCTIONS ---
+
+        /**
+         * Displays a custom, non-blocking message instead of alert().
+         * @param {string} message - The message content.
+         * @param {'success'|'error'|'info'} type - The message type.
+         */
+        function showMessage(message, type) {
+            const container = document.getElementById('custom-message-container');
+            const bgColor = type === 'success' ? 'bg-green-500' : (type === 'error' ? 'bg-red-500' : 'bg-blue-500');
+
+            const htmlMessage = `
+                <div class="custom-message fixed inset-x-0 top-0 mx-auto mt-4 z-50 flex items-start justify-center p-4 transition-opacity duration-300 opacity-0 pointer-events-none">
+                    <div class="${bgColor} text-white p-3 rounded-lg shadow-xl max-w-sm transform scale-100 pointer-events-auto">
+                        ${message}
+                    </div>
+                </div>
+            `;
+            container.insertAdjacentHTML('beforeend', htmlMessage);
+            const newMessage = container.lastElementChild;
+            setTimeout(() => newMessage.classList.remove('opacity-0'), 10);
+            
+            setTimeout(() => {
+                newMessage.classList.add('opacity-0');
+                setTimeout(() => newMessage.remove(), 300);
+            }, 3000);
+        }
+
+        // Sobreescribir la función alert para usar el modal custom
+        window.alert = function(message) {
+            showMessage(message, 'info');
+        };
+
+        // Initialize on load
+        initializeFirebase();
+    </script>
+</body>
+</html>
