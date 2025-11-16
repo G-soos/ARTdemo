@@ -3,1016 +3,827 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Análisis de Riesgos de la Tarea (ART) - Demo</title>
-    <!-- Carga de Tailwind CSS -->
+    <title>Taller de Canales ORM</title>
+    <!-- Cargar Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Carga de Librerías para PDF -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <!-- Configuración de fuente Inter -->
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: #f7f7f9;
+        /* Estilo personalizado para los canvas para que no sean borrosos */
+        canvas {
+            image-rendering: pixelated;
+            image-rendering: -moz-crisp-edges;
+            image-rendering: crisp-edges;
+            background-color: #374151; /* bg-gray-700 */
         }
-        /* Estilo para la advertencia en caso de respuesta "NO" */
-        .warning-text {
-            color: #ef4444; /* Rojo 500 */
-            font-weight: 600;
+        /* Estilo para contenedores deshabilitados (Ahora solo se usa para opacidad visual) */
+        .disabled-container {
+            opacity: 0.5;
+            pointer-events: none;
         }
-        /* Estilo para el estado de los botones (seleccionado) */
-        .btn-selected {
-            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.5); /* Anillo azul ligero */
-            border-color: #3b82f6;
-        }
-        /* Estilo para la caja de la firma */
-        #signature-display-box {
-            min-height: 80px;
-            background-color: #e2e8f0; /* Azul grisáceo claro */
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border: 2px dashed #94a3b8; /* Borde punteado */
-            border-radius: 0.5rem;
-            color: #64748b;
-            font-style: italic;
-            cursor: pointer;
-            overflow: hidden;
-            padding: 4px; /* Padding interno para que la firma no toque el borde */
-        }
-        #signature-image {
-            max-width: 100%;
-            max-height: 100%;
-            object-fit: contain;
-        }
-
-        /* Estilo específico para las casillas de estrategias */
-        .strategy-box {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            height: 100px; /* Tamaño fijo para simular el rectángulo */
-            border: 2px solid #cbd5e1;
-            border-radius: 0.5rem;
-            text-align: center;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s;
-            user-select: none;
-            position: relative;
-            background-color: #f8fafc;
-            color: #475569;
-        }
-        .strategy-box.selected {
-            border-color: #0d9488; /* Teal 600 */
-            background-color: #ccfbf1; /* Teal 100 */
-            color: #0f766e; /* Teal 700 */
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
-        }
-        .strategy-checkbox {
-            position: absolute;
-            top: 8px;
-            right: 8px;
-            width: 1.25rem;
-            height: 1.25rem;
-            accent-color: #0d9488; /* Teal 600 */
-        }
-        /* Estilos para el Canvas de Firma */
-        #signature-canvas {
-            border: 2px solid #3b82f6;
-            cursor: crosshair;
-            touch-action: none; /* Crucial para manejar el tacto en móviles */
-        }
-
-        /* --- ESTILOS DE PREVISUALIZACIÓN FIJA (HOJA DE PAPEL) --- */
-        .paper-sheet {
-            width: 800px !important;     /* Ancho fijo */
-            min-width: 800px !important; /* No encoger */
-            max-width: 800px !important; /* No estirar */
-            background-color: white;
-            padding: 40px;
-            margin: 0 auto; /* Centrado */
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-            box-sizing: border-box;
-        }
-        
-        /* Contenedor con scroll para móviles */
-        .preview-scroll-wrapper {
-            width: 100%;
-            overflow-x: auto; /* Permite scroll horizontal en móviles */
-            background-color: #525659; /* Fondo gris oscuro tipo visor PDF */
-            padding: 20px;
-            display: flex;
-            justify-content: center; /* Centra la hoja si cabe */
-            align-items: flex-start;
-        }
-
-        /* Estilos internos del PDF */
-        .pdf-section-title {
-            font-weight: bold;
-            font-size: 16px; /* Tamaño fijo en px */
-            margin-top: 20px;
-            margin-bottom: 10px;
-            border-bottom: 2px solid #ef4444;
-            padding-bottom: 4px;
-            text-transform: uppercase;
-        }
-        .pdf-data-item {
-            display: flex;
-            justify-content: space-between;
-            border-bottom: 1px solid #e5e7eb;
-            padding: 8px 0;
-            font-size: 14px; /* Tamaño fijo */
-        }
-        .pdf-data-label {
-            font-weight: 700;
-            color: #374151;
-            flex-basis: 40%;
-        }
-        .pdf-data-value {
-            color: #111827;
-            text-align: right;
-            flex-basis: 60%;
-            font-weight: 500;
-        }
-        .pdf-signature-box {
-            border: 1px solid #1f2937;
-            padding: 5px;
-            margin-top: 10px;
-            height: 120px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        .pdf-signature-image {
-            max-width: 100%;
-            max-height: 110px;
-            object-fit: contain;
-        }
-        .pdf-check-item {
-            display: flex;
-            justify-content: space-between;
-            padding: 8px 0;
-            border-bottom: 1px dashed #e5e7eb;
-            font-size: 13px;
-        }
-        .pdf-check-result-si {
-            color: #059669; /* Green 600 */
-            font-weight: 800;
-        }
-        .pdf-check-result-no {
-            color: #dc2626; /* Red 600 */
-            font-weight: 800;
-        }
-        
-        /* Ajuste para el modal de firma en móvil */
-        #signature-modal > div {
-            max-height: 95vh;
-            max-width: 95vw;
-        }
-
     </style>
 </head>
-<body class="p-4 sm:p-8">
+<body class="bg-gray-900 text-gray-200 font-sans flex items-center justify-center min-h-screen p-4">
 
-    <div id="app-container" class="max-w-4xl mx-auto bg-white shadow-2xl rounded-xl p-6 md:p-10">
+    <div class="bg-gray-800 p-8 rounded-2xl shadow-2xl w-full max-w-6xl">
         
-        <!-- Alerta de Mensajes Personalizada -->
-        <div id="custom-message-container" aria-live="polite"></div>
+        <h1 class="text-3xl font-bold text-center text-white mb-2">Taller de Canales ORM</h1>
+        <p class="text-center text-lg text-gray-400 mb-8">Crea tu textura ORM (Occlusion, Roughness, Metallic)</p>
 
-        <!-- Encabezado -->
-        <header class="mb-8 border-b-4 border-red-600 pb-4">
-            <h1 class="text-3xl sm:text-4xl font-extrabold text-gray-800">
-                ART: Análisis de Riesgos de la Tarea (Demo)
-            </h1>
-        </header>
-
-        <!-- Sección I: ETAPA 1 -->
-        <section class="mb-10" id="etapa1-section">
-            <h2 class="text-2xl font-bold text-red-700 mb-6 border-b-2 border-red-700 pb-2">I) ETAPA 1</h2>
+        <!-- Contenedor de Entradas de Canal -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
             
-            <!-- Subsección 1.1: ANTECEDENTES DEL TRABAJO (CON FIRMA) -->
-            <div class="p-5 bg-gray-50 rounded-lg border border-gray-200 mb-8" id="subseccion-1-1">
-                 <h3 class="text-xl font-semibold text-gray-700 mb-4 border-b pb-2">1.1) ANTECEDENTES DEL TRABAJO</h3>
-            
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <!-- Fila 1: Empresa y Supervisor -->
-                    <input type="text" id="empresa" placeholder="NOMBRE DE LA EMPRESA" class="p-3 border rounded-lg focus:ring-red-500 focus:border-red-500 col-span-1 uppercase">
-                    <input type="text" id="supervisor" placeholder="NOMBRE DEL SUPERVISOR RESPONSABLE DEL TRABAJO" class="p-3 border rounded-lg focus:ring-red-500 focus:border-red-500 col-span-1 uppercase">
+            <!-- Canal ROJO (Occlusion) -->
+            <div id="occlusionContainer" class="space-y-4 p-4 bg-gray-900/50 rounded-lg border border-gray-700 transition duration-150">
+                <h2 class="text-xl font-semibold text-red-400">Canal ROJO (R): Occlusion</h2>
+                <label for="occlusionLoader" class="block w-full cursor-pointer bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg text-center transition duration-200 text-sm">
+                    Cargar Mapa de Oclusión
+                </label>
+                <input type="file" id="occlusionLoader" class="hidden" accept="image/*">
+                
+                <!-- Área de Estado y Botón de Borrado -->
+                <div id="redStatusArea" class="hidden flex items-center justify-between p-1 bg-red-900/30 rounded">
+                    <div id="red-status" class="text-red-300 font-mono text-xs truncate"></div>
+                    <button id="redClearButton" data-channel="r" class="text-red-300 hover:text-white bg-red-700/50 hover:bg-red-700 w-6 h-6 rounded-full flex items-center justify-center font-bold text-sm transition duration-150 ml-2" title="Eliminar textura">X</button>
+                </div>
 
-                    <!-- Fila 2: Área de Trabajo y Lugar Específico -->
-                    <input type="text" id="area" placeholder="ÁREA DE TRABAJO" class="p-3 border rounded-lg focus:ring-red-500 focus:border-red-500 col-span-1 uppercase">
-                    <input type="text" id="lugar_especifico" placeholder="LUGAR ESPECÍFICO" class="p-3 border rounded-lg focus:ring-red-500 focus:border-red-500 col-span-1 uppercase">
+                <p id="redSolidLabel" class="text-xs text-gray-500 text-center">O usa un valor sólido:</p>
+                
+                <div id="redSliderContainer">
+                    <label for="redChannel" class="block mb-1 text-sm sr-only">Valor de Oclusión</label>
+                    <input id="redChannel" type="range" min="0" max="255" value="255" class="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer range-sm" style="accent-color: #f87171;">
+                    <div class="text-center text-red-300 font-mono text-sm" id="redValueLabel">Valor: 255 (Blanco)</div>
+                </div>
+            </div>
 
-                    <!-- Fila 3: Fecha, Hora Inicio, Hora Término -->
-                    <input type="date" id="fecha" placeholder="FECHA" class="p-3 border rounded-lg focus:ring-red-500 focus:border-red-500">
-                    
-                    <div class="grid grid-cols-2 gap-4">
-                        <input type="time" id="hora_inicio" placeholder="HORA DE INICIO" class="p-3 border rounded-lg focus:ring-red-500 focus:border-red-500" title="Hora de Inicio">
-                        <input type="time" id="hora_termino" placeholder="HORA DE TÉRMINO" class="p-3 border rounded-lg focus:ring-red-500 focus:border-red-500" title="Hora de Término">
-                    </div>
+            <!-- Canal VERDE (Roughness) -->
+            <div id="roughnessContainer" class="space-y-4 p-4 bg-gray-900/50 rounded-lg border border-emerald-700 border-2 transition duration-150">
+                <h2 class="text-xl font-semibold text-emerald-400">Canal VERDE (G): Roughness</h2>
+                <label for="imageLoader" class="block w-full cursor-pointer bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-4 rounded-lg text-center transition duration-200 text-sm">
+                    Cargar Mapa de Roughness
+                </label>
+                <input type="file" id="imageLoader" class="hidden" accept="image/*">
+                
+                <!-- Área de Estado y Botón de Borrado -->
+                <div id="greenStatusArea" class="hidden flex items-center justify-between p-1 bg-emerald-900/30 rounded">
+                    <div id="green-status" class="text-emerald-300 font-mono text-xs truncate"></div>
+                    <button id="greenClearButton" data-channel="g" class="text-emerald-300 hover:text-white bg-emerald-700/50 hover:bg-emerald-700 w-6 h-6 rounded-full flex items-center justify-center font-bold text-sm transition duration-150 ml-2" title="Eliminar textura">X</button>
                 </div>
                 
-                <textarea id="descripcion" placeholder="DESCRIPCIÓN DE LA TAREA (Detallada)" rows="3" class="mt-4 w-full p-3 border rounded-lg focus:ring-red-500 focus:border-red-500 uppercase"></textarea>
+                <p id="greenSolidLabel" class="text-xs text-gray-500 text-center">O usa un valor sólido:</p>
 
-                <!-- Campo de Firma (Nuevo) -->
-                <div class="mt-4 border-t pt-4">
-                    <label class="block text-sm font-medium text-gray-700 mb-2">FIRMA DEL SUPERVISOR RESPONSABLE</label>
-                    <div id="signature-display-box" onclick="openSignatureModal()">
-                        <img id="signature-image" src="" alt="Firma digital" class="hidden">
-                        <span id="signature-placeholder">Clic aquí para firmar</span>
-                    </div>
-                    <!-- Almacenamiento oculto de la firma en Base64 -->
-                    <input type="hidden" id="firma_base64" value="">
-                </div>
-             </div>
-
-            <!-- Subsección 1.2: DE LOS TRABAJADORES: CONTESTE CADA PREGUNTA -->
-            <div class="p-5 bg-red-50 rounded-lg border border-red-200 mb-8" id="subseccion-1-2">
-                <h3 class="text-xl font-semibold text-red-600 mb-4 border-b border-red-300 pb-2">1.2) DE LOS TRABAJADORES: CONTESTE CADA PREGUNTA</h3>
-
-                <!-- Alerta de "NO INICIAR" para 1.2 -->
-                <div id="no-iniciar-alert-1-2" class="hidden p-4 mb-4 text-sm text-yellow-800 rounded-lg bg-yellow-100" role="alert">
-                    <svg class="flex-shrink-0 inline w-4 h-4 me-3" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
-                        <path d="M10 .5a9.5 9.5 0 1 0 9.5 9.5A9.51 9.51 0 0 0 10 .5ZM10 15a1 1 0 1 1 0-2 1 1 0 0 1 0 2Zm1-4a1 1 0 0 1-2 0V6a1 1 0 0 1 2 0v5Z"/>
-                    </svg>
-                    <span class="font-medium">ATENCIÓN:</span> UN "NO" EN CUALQUIERA DE LAS PREGUNTAS SIGNIFICA <span class="warning-text">NO INICIAR LA TAREA</span> Y DAR AVISO AL SUPERVISOR.
-                </div>
-
-                <div id="check-list-1-2">
-                    <!-- Pregunta 1 (1.2) -->
-                    <div class="flex items-center justify-between py-3 border-b border-red-100" data-pregunta="condiciones_fisicas">
-                        <label class="text-gray-700 text-base flex-1 mr-4">1. ¿Me encuentro en condiciones físicas y psicológicas para realizar la tarea?</label>
-                        <div class="flex space-x-4">
-                            <button data-answer="Si" class="answer-btn-1-2 text-white bg-green-500 hover:bg-green-600 font-medium rounded-lg text-sm px-4 py-2 transition duration-150">Sí</button>
-                            <button data-answer="No" class="answer-btn-1-2 text-white bg-red-500 hover:bg-red-600 font-medium rounded-lg text-sm px-4 py-2 transition duration-150">No</button>
-                        </div>
-                    </div>
-                    <!-- Pregunta 2 (1.2) -->
-                    <div class="flex items-center justify-between py-3 border-b border-red-100" data-pregunta="condiciones_entorno">
-                        <label class="text-gray-700 text-base flex-1 mr-4">2. ¿Las condiciones del entorno permiten realizar mi trabajo de manera segura?</label>
-                        <div class="flex space-x-4">
-                            <button data-answer="Si" class="answer-btn-1-2 text-white bg-green-500 hover:bg-green-600 font-medium rounded-lg text-sm px-4 py-2 transition duration-150">Sí</button>
-                            <button data-answer="No" class="answer-btn-1-2 text-white bg-red-500 hover:bg-red-600 font-medium rounded-lg text-sm px-4 py-2 transition duration-150">No</button>
-                        </div>
-                    </div>
-                    <!-- Pregunta 3 (1.2) -->
-                    <div class="flex items-center justify-between py-3 border-b border-red-100" data-pregunta="areas_condiciones">
-                        <label class="text-gray-700 text-base flex-1 mr-4">3. ¿Verifiqué que las áreas de desplazamiento y trabajo se encuentran en condiciones?</label>
-                        <div class="flex space-x-4">
-                            <button data-answer="Si" class="answer-btn-1-2 text-white bg-green-500 hover:bg-green-600 font-medium rounded-lg text-sm px-4 py-2 transition duration-150">Sí</button>
-                            <button data-answer="No" class="answer-btn-1-2 text-white bg-red-500 hover:bg-red-600 font-medium rounded-lg text-sm px-4 py-2 transition duration-150">No</button>
-                        </div>
-                    </div>
-                    <!-- Pregunta 4 (1.2) -->
-                    <div class="flex items-center justify-between py-3 border-b border-red-100" data-pregunta="epp_especificos">
-                        <label class="text-gray-700 text-base flex-1 mr-4">4. ¿Poseo todos los elementos de protección personal (EPP) específicos para la tarea?</label>
-                        <div class="flex space-x-4">
-                            <button data-answer="Si" class="answer-btn-1-2 text-white bg-green-500 hover:bg-green-600 font-medium rounded-lg text-sm px-4 py-2 transition duration-150">Sí</button>
-                            <button data-answer="No" class="answer-btn-1-2 text-white bg-red-500 hover:bg-red-600 font-medium rounded-lg text-sm px-4 py-2 transition duration-150">No</button>
-                        </div>
-                    </div>
-                    <!-- Pregunta 5 (1.2) -->
-                    <div class="flex items-center justify-between py-3 border-b border-red-100" data-pregunta="equipos_herramientas">
-                        <label class="text-gray-700 text-base flex-1 mr-4">5. ¿Dispongo de equipos y herramientas apropiadas, en buen estado y con inspección al día?</label>
-                        <div class="flex space-x-4">
-                            <button data-answer="Si" class="answer-btn-1-2 text-white bg-green-500 hover:bg-green-600 font-medium rounded-lg text-sm px-4 py-2 transition duration-150">Sí</button>
-                            <button data-answer="No" class="answer-btn-1-2 text-white bg-red-500 hover:bg-red-600 font-medium rounded-lg text-sm px-4 py-2 transition duration-150">No</button>
-                        </div>
-                    </div>
-                    <!-- Pregunta 6 (1.2) -->
-                    <div class="flex items-center justify-between py-3" data-pregunta="actuar_emergencia">
-                        <label class="text-gray-700 text-base flex-1 mr-4">6. ¿Sé cómo activar y actuar ante una emergencia?</label>
-                        <div class="flex space-x-4">
-                            <button data-answer="Si" class="answer-btn-1-2 text-white bg-green-500 hover:bg-green-600 font-medium rounded-lg text-sm px-4 py-2 transition duration-150">Sí</button>
-                            <button data-answer="No" class="answer-btn-1-2 text-white bg-red-500 hover:bg-red-600 font-medium rounded-lg text-sm px-4 py-2 transition duration-150">No</button>
-                        </div>
-                    </div>
+                <div id="greenSliderContainer">
+                    <label for="greenChannel" class="block mb-1 text-sm sr-only">Valor de Roughness</label>
+                    <input id="greenChannel" type="range" min="0" max="255" value="0" class="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer range-sm" style="accent-color: #34d399;">
+                    <div class="text-center text-emerald-300 font-mono text-sm" id="greenValueLabel">Valor: 0 (Mate)</div>
                 </div>
             </div>
 
-            <!-- Subsección 1.3: DE LA TAREA: CONTESTE CADA PREGUNTA -->
-            <div class="p-5 bg-blue-50 rounded-lg border border-blue-200 mb-8" id="subseccion-1-3">
-                <h3 class="text-xl font-semibold text-blue-600 mb-4 border-b border-blue-300 pb-2">1.3) DE LA TAREA: CONTESTE CADA PREGUNTA</h3>
-
-                <!-- Pregunta 1 (1.3) -->
-                <div class="py-3 border-b border-blue-100" data-pregunta="capacitado_prevencion">
-                    <label class="text-gray-700 text-base flex-1 mr-4 block mb-2">1. ¿Estoy capacitado(a) y conozco las medidas de prevención que mi empleador ha definido para ejecutar mi trabajo o tarea de manera correcta y segura?</label>
-                    
-                    <div class="flex justify-start space-x-4">
-                        <button data-answer="Si" class="answer-btn-1-3 text-white bg-green-500 hover:bg-green-600 font-medium rounded-lg text-sm px-4 py-2 transition duration-150">Sí</button>
-                        <button data-answer="No" class="answer-btn-1-3 text-white bg-red-500 hover:bg-red-600 font-medium rounded-lg text-sm px-4 py-2 transition duration-150">No</button>
-                    </div>
-                    
-                    <!-- Advertencia específica para la pregunta 1.3.1 -->
-                    <p class="text-xs text-red-600 font-semibold mt-2">UN "NO" A ESTA PREGUNTA SIGNIFICA <span class="warning-text">NO INICIAR LA TAREA</span> Y DAR AVISO A SU SUPERVISIÓN.</p>
+            <!-- Canal AZUL (Metallic) -->
+            <div id="metallicContainer" class="space-y-4 p-4 bg-gray-900/50 rounded-lg border border-gray-700 transition duration-150">
+                <h2 class="text-xl font-semibold text-blue-400">Canal AZUL (B): Metallic</h2>
+                <label for="metallicLoader" class="block w-full cursor-pointer bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg text-center transition duration-200 text-sm">
+                    Cargar Mapa Metálico
+                </label>
+                <input type="file" id="metallicLoader" class="hidden" accept="image/*">
+                
+                <!-- Área de Estado y Botón de Borrado -->
+                <div id="blueStatusArea" class="hidden flex items-center justify-between p-1 bg-blue-900/30 rounded">
+                    <div id="blue-status" class="text-blue-300 font-mono text-xs truncate"></div>
+                    <button id="blueClearButton" data-channel="b" class="text-blue-300 hover:text-white bg-blue-700/50 hover:bg-blue-700 w-6 h-6 rounded-full flex items-center justify-center font-bold text-sm transition duration-150 ml-2" title="Eliminar textura">X</button>
                 </div>
-
-                <!-- Pregunta 2 (1.3) con campo de tipeo condicional -->
-                <div class="py-3 border-b border-blue-100" data-pregunta="documento_regula">
-                    <label class="text-gray-700 text-base flex-1 mr-4 block mb-2">2. ¿Existe algún documento que regule mi trabajo o tarea? Manual, reglamento, procedimiento, instructivo de trabajo u otro.</label>
-                    <div class="flex justify-start space-x-4">
-                        <button data-answer="Si" class="answer-btn-1-3 text-white bg-green-500 hover:bg-green-600 font-medium rounded-lg text-sm px-4 py-2 transition duration-150">Sí</button>
-                        <button data-answer="No" class="answer-btn-1-3 text-white bg-red-500 hover:bg-red-600 font-medium rounded-lg text-sm px-4 py-2 transition duration-150">No</button>
-                    </div>
-                    
-                    <!-- Campo de Tipeo Condicional -->
-                    <textarea id="documento_tipo" placeholder="Indique cuál: Manual, procedimiento, instructivo, etc." rows="1" class="hidden mt-2 w-full p-2 border rounded-lg focus:ring-blue-500 focus:border-blue-500 text-sm"></textarea>
-                </div>
-
-                <!-- Pregunta 3 (1.3) -->
-                <div class="py-3" data-pregunta="alcance_actividades">
-                    <label class="text-gray-700 text-base flex-1 mr-4 block mb-2">3. ¿El manual, reglamento, procedimiento, instructivo u otro incluye todas las actividades (alcance) a desarrollar en terreno?</label>
-                    <div class="flex justify-start space-x-4">
-                        <button data-answer="Si" class="answer-btn-1-3 text-white bg-green-500 hover:bg-green-600 font-medium rounded-lg text-sm px-4 py-2 transition duration-150">Sí</button>
-                        <button data-answer="No" class="answer-btn-1-3 text-white bg-red-500 hover:bg-red-600 font-medium rounded-lg text-sm px-4 py-2 transition duration-150">No</button>
-                    </div>
+                
+                <p id="blueSolidLabel" class="text-xs text-gray-500 text-center">O usa un valor sólido:</p>
+                
+                <div id="blueSliderContainer">
+                    <label for="blueChannel" class="block mb-1 text-sm sr-only">Valor Metálico</label>
+                    <input id="blueChannel" type="range" min="0" max="255" value="0" class="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer range-sm" style="accent-color: #60a5fa;">
+                    <div class="text-center text-blue-300 font-mono text-sm" id="blueValueLabel">Valor: 0 (Negro)</div>
                 </div>
             </div>
+        </div>
+        
+        <hr class="border-gray-700 mb-8">
 
-            <!-- Subsección 1.4: Estrategias de Control -->
-            <div class="p-5 bg-teal-50 rounded-lg border border-teal-200" id="subseccion-1-4">
-                <h3 class="text-xl font-semibold text-teal-700 mb-4 border-b border-teal-300 pb-2">1.4) Verificar si aplica una o más Estrategias de Control, seleccionando la casilla:</h3>
-
-                <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-7 gap-4" id="estrategias-grid">
-                    <!-- Casilla de control de ejemplo -->
-                    <div class="strategy-box" data-strategy="Aislamiento">
-                        <label class="flex flex-col items-center justify-center p-2 h-full w-full">
-                            <span class="text-sm">Aislamiento</span>
-                            <span class="text-xs font-normal text-gray-500">(Control de Ingeniería)</span>
-                            <input type="checkbox" data-strategy-name="Aislamiento" class="strategy-checkbox" onchange="toggleStrategyBox(this)">
-                        </label>
-                    </div>
-                    <!-- Casillas de ejemplo adicionales -->
-                    <div class="strategy-box" data-strategy="Señalización">
-                        <label class="flex flex-col items-center justify-center p-2 h-full w-full">
-                            <span class="text-sm">Señalización</span>
-                            <span class="text-xs font-normal text-gray-500">(Control Administrativo)</span>
-                            <input type="checkbox" data-strategy-name="Señalización" class="strategy-checkbox" onchange="toggleStrategyBox(this)">
-                        </label>
-                    </div>
-                    <div class="strategy-box" data-strategy="Permiso de Trabajo">
-                        <label class="flex flex-col items-center justify-center p-2 h-full w-full">
-                            <span class="text-sm">Permiso de Trabajo</span>
-                            <span class="text-xs font-normal text-gray-500">(Control Administrativo)</span>
-                            <input type="checkbox" data-strategy-name="Permiso de Trabajo" class="strategy-checkbox" onchange="toggleStrategyBox(this)">
-                        </label>
-                    </div>
-                    <div class="strategy-box" data-strategy="EPP">
-                        <label class="flex flex-col items-center justify-center p-2 h-full w-full">
-                            <span class="text-sm">Uso de EPP</span>
-                            <span class="text-xs font-normal text-gray-500">(Control de EPP)</span>
-                            <input type="checkbox" data-strategy-name="EPP" class="strategy-checkbox" onchange="toggleStrategyBox(this)">
-                        </label>
-                    </div>
-                </div>
-            </div>
-            
-        </section>
-
-        <!-- Pie de página, Botones de Previsualización y Historial -->
-        <footer class="mt-10 pt-6 border-t border-gray-300 text-center">
-            <button onclick="showPdfPreview()" id="preview-art-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-extrabold py-3 px-8 rounded-xl shadow-lg transition duration-300 transform hover:scale-105">
-                Generar PDF y Previsualizar
+        <!-- Contenedor Desplegable para Separador ORM (Splitter) -->
+        <div id="splitterMainContainer" class="bg-gray-700 p-4 rounded-lg mb-8 transition duration-150 border border-gray-700">
+            <button id="splitterToggle" class="w-full text-left py-2 text-lg font-semibold text-white flex justify-between items-center focus:outline-none">
+                Desglosar Textura ORM Combinada (Splitter)
+                <svg id="toggleIcon" class="w-5 h-5 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
             </button>
-            <p class="text-sm text-gray-500 mt-4">Se generará el documento para que pueda revisarlo y descargarlo.</p>
-        </footer>
-    </div>
-
-    <!-- Modal para Captura de Firma -->
-    <div id="signature-modal" class="fixed inset-0 bg-gray-600 bg-opacity-75 hidden items-center justify-center p-4 z-50">
-        <!-- Contenedor del Modal ajustado para ocupar más espacio en móvil -->
-        <div class="bg-white rounded-xl shadow-2xl w-full max-w-lg p-6 flex flex-col max-h-[95vh]">
-            <div class="flex justify-between items-center border-b pb-3 mb-4 flex-shrink-0">
-                <h3 class="text-2xl font-bold text-gray-800">Firma Digital del Supervisor</h3>
-            </div>
             
-            <p class="text-sm text-gray-600 mb-3 flex-shrink-0">Firme dentro del recuadro usando su dedo o stylus. La firma es obligatoria.</p>
-
-            <!-- CANVAS ELEMENT: El recuadro es flexible en altura para modo horizontal -->
-            <div class="flex-grow min-h-[150px] mb-4">
-                <canvas id="signature-canvas" class="w-full h-full border-4 border-dashed rounded-lg" style="height: 100%;"></canvas>
-            </div>
-
-
-            <div class="flex justify-between mt-4 space-x-3 flex-shrink-0">
-                <button onclick="clearSignatureCanvas()" class="flex-1 bg-yellow-500 hover:bg-yellow-600 text-white font-medium py-2 rounded-lg transition duration-150">
-                    Borrar Firma
-                </button>
-                <button onclick="saveSignature()" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 rounded-lg transition duration-150">
-                    Guardar y Cerrar
-                </button>
-                <button onclick="closeSignatureModal()" class="flex-1 bg-gray-400 hover:bg-gray-500 text-white font-medium py-2 rounded-lg transition duration-150">
-                    Cancelar
-                </button>
-            </div>
-        </div>
-    </div>
-
-
-    <!-- Modal para Previsualización (Nuevo con formato fijo) -->
-    <div id="pdf-preview-modal" class="fixed inset-0 bg-gray-800 bg-opacity-90 hidden items-start justify-center pt-4 z-40 overflow-y-auto">
-        <!-- Wrapper principal sin limite de ancho para permitir el scroll horizontal de la hoja grande -->
-        <div class="w-full min-h-screen flex flex-col items-center pb-10">
-            
-            <!-- Barra Superior de Acciones (Flotante o fija arriba) -->
-            <div class="sticky top-0 w-full bg-white shadow-md z-50 p-4 flex justify-between items-center max-w-4xl rounded-b-lg mb-4">
-                <h3 class="text-lg font-bold text-gray-800">Vista Previa del PDF</h3>
-                <div class="flex space-x-2">
-                    <button onclick="closePreviewModal()" class="text-gray-600 hover:text-gray-800 px-3 py-1 rounded border border-gray-300">
-                        Cerrar
-                    </button>
-                    <button onclick="saveArtAsPdf()" class="bg-red-600 hover:bg-red-700 text-white font-bold px-4 py-1 rounded shadow-lg">
-                        ⬇️ Descargar PDF
-                    </button>
+            <div id="splitterContent" class="hidden mt-4 pt-4 border-t border-gray-600">
+                <!-- Zona de Carga y Estado del ORM a Desglosar -->
+                <div id="splitterLoadArea" class="space-y-3 mb-6 p-4 bg-gray-900 rounded-lg border border-purple-500/50 transition duration-150">
+                    <label for="ormSplitterLoader" id="splitterLabel" class="block w-full cursor-pointer bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-lg text-center transition duration-200 text-sm">
+                        1. Cargar/Arrastrar Textura ORM (RGB)
+                    </label>
+                    <input type="file" id="ormSplitterLoader" class="hidden" accept="image/*">
+                    
+                    <!-- Área de Estado y Botón de Borrado del Splitter -->
+                    <div id="splitterStatusArea" class="hidden flex items-center justify-between p-1 bg-purple-900/30 rounded">
+                        <div id="splitter-status" class="text-purple-300 font-mono text-xs truncate"></div>
+                        <button id="splitterClearButton" class="text-purple-300 hover:text-white bg-purple-700/50 hover:bg-purple-700 w-6 h-6 rounded-full flex items-center justify-center font-bold text-sm transition duration-150 ml-2" title="Eliminar textura ORM cargada">X</button>
+                    </div>
                 </div>
-            </div>
 
-            <!-- Scroll Wrapper para la hoja de papel -->
-            <!-- Esto permite que en el celular hagas scroll horizontal para ver toda la hoja de 800px -->
-            <div class="preview-scroll-wrapper">
-                <div id="pdf-content" class="paper-sheet">
-                    <!-- Contenido generado por JS -->
+                <p id="splitterMessage" class="text-sm text-gray-400 mb-4">2. Arrastra y suelta la miniatura deseada al canal de arriba (Rojo, Verde o Azul).</p>
+                
+                <div id="splitterResults" class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <!-- ROJO (Occlusion) -->
+                    <div id="splitRedContainer" class="p-2 border border-red-500 rounded-lg text-center cursor-grab bg-gray-900/50 hover:bg-gray-700 transition duration-150 shadow-md opacity-50 pointer-events-none" draggable="true" data-channel-name="occlusion">
+                        <canvas id="splitRedCanvas" class="w-full aspect-square rounded mb-1 border border-gray-600"></canvas>
+                        <span class="text-red-300 text-xs font-mono">Rojo (Occlusion)</span>
+                    </div>
+                    <!-- VERDE (Roughness) -->
+                    <div id="splitGreenContainer" class="p-2 border border-emerald-500 rounded-lg text-center cursor-grab bg-gray-900/50 hover:bg-gray-700 transition duration-150 shadow-md opacity-50 pointer-events-none" draggable="true" data-channel-name="roughness">
+                        <canvas id="splitGreenCanvas" class="w-full aspect-square rounded mb-1 border border-gray-600"></canvas>
+                        <span class="text-emerald-300 text-xs font-mono">Verde (Roughness)</span>
+                    </div>
+                    <!-- AZUL (Metallic) -->
+                    <div id="splitBlueContainer" class="p-2 border border-blue-500 rounded-lg text-center cursor-grab bg-gray-900/50 hover:bg-gray-700 transition duration-150 shadow-md opacity-50 pointer-events-none" draggable="true" data-channel-name="metallic">
+                        <canvas id="splitBlueCanvas" class="w-full aspect-square rounded mb-1 border border-gray-600"></canvas>
+                        <span class="text-blue-300 text-xs font-mono">Azul (Metallic)</span>
+                    </div>
                 </div>
             </div>
         </div>
+        <!-- Fin del Contenedor Desplegable -->
+
+
+        <!-- Contenedor de Salida -->
+        <div id="outputContainer" class="grid grid-cols-1 md:grid-cols-2 gap-8 mt-8">
+            
+            <!-- Columna de Configuración de Salida -->
+            <div class="space-y-6">
+                <h2 class="text-xl font-semibold text-white">Configuración de Salida</h2>
+                <div>
+                    <label for="outputSize" class="block mb-2 text-sm font-medium text-gray-300">1. Definir Tamaño de Salida (Maestro)</label>
+                    <select id="outputSize" class="bg-gray-700 border border-gray-600 text-white text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
+                        <option id="originalSizeOption" value="original" disabled>Original (Cargar una imagen primero)</option>
+                        <option value="4096">4096x4096</option>
+                        <option value="2048">2048x2048</option>
+                        <option value="1024" selected>1024x1024 (Defecto)</option>
+                        <option value="512">512x512</option>
+                        <option value="256">256x256</option>
+                        <option value="128">128x128</option>
+                        <option value="64">64x64</option>
+                    </select>
+                </div>
+                
+                <!-- BOTÓN DE DESCARGA: Habilitado siempre por valores sólidos -->
+                <button id="downloadButton" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg text-lg transition duration-200">
+                    2. Descargar Imagen ORM (.png)
+                </button>
+            </div>
+
+            <!-- Columna de Vista Previa de Salida -->
+            <div>
+                <h3 class="text-lg font-semibold mb-2 text-center">Salida (Tu ORM)</h3>
+                <canvas id="outputCanvas" class="w-full aspect-square rounded-lg border-2 border-gray-700"></canvas>
+            </div>
+        </div>
+
     </div>
 
+    <!-- Canvas ocultos para procesamiento -->
+    <canvas id="hiddenRedCanvas" class="hidden"></canvas>
+    <canvas id="hiddenGreenCanvas" class="hidden"></canvas>
+    <canvas id="hiddenBlueCanvas" class="hidden"></canvas>
+    <canvas id="processingCanvas" class="hidden"></canvas>
+    <canvas id="hiddenSplitCanvas" class="hidden"></canvas> <!-- Canvas oculto dedicado para la separación -->
 
     <script>
-        // --- SIGNATURE CANVAS VARIABLES ---
-        let canvas, ctx;
-        let isDrawing = false;
-        let lastX = 0;
-        let lastY = 0;
-        let signatureDataURL = ''; // Almacena la firma en Base64
-        let isModalOpen = false; // Nuevo estado para controlar el modal de firma
+        // --- UTILIDAD: Función de Debounce ---
+        function debounce(func, delay) {
+            let timeoutId;
+            return function(...args) {
+                clearTimeout(timeoutId);
+                timeoutId = setTimeout(() => {
+                    func.apply(this, args);
+                }, delay);
+            };
+        }
 
+        // --- Obtener Elementos del DOM ---
+        const imageLoader = document.getElementById('imageLoader'); 
+        const occlusionLoader = document.getElementById('occlusionLoader'); 
+        const metallicLoader = document.getElementById('metallicLoader'); 
+
+        const redChannel = document.getElementById('redChannel');
+        const greenChannel = document.getElementById('greenChannel');
+        const blueChannel = document.getElementById('blueChannel');
         
-        // --- INICIALIZACIÓN AL CARGAR LA PÁGINA ---
-        window.onload = () => {
-            setupEventListeners();
-            initializeSignatureCanvas(); // Inicializar Canvas
+        const redValueLabel = document.getElementById('redValueLabel');
+        const greenValueLabel = document.getElementById('greenValueLabel');
+        const blueValueLabel = document.getElementById('blueValueLabel');
+        
+        // Status Labels y Botones de Limpieza
+        const redStatus = document.getElementById('red-status');
+        const greenStatus = document.getElementById('green-status');
+        const blueStatus = document.getElementById('blue-status');
+
+        const redStatusArea = document.getElementById('redStatusArea');
+        const greenStatusArea = document.getElementById('greenStatusArea');
+        const blueStatusArea = document.getElementById('blueStatusArea');
+        
+        const redClearButton = document.getElementById('redClearButton');
+        const greenClearButton = document.getElementById('greenClearButton');
+        const blueClearButton = document.getElementById('blueClearButton');
+
+        const redSolidLabel = document.getElementById('redSolidLabel');
+        const greenSolidLabel = document.getElementById('greenSolidLabel');
+        const blueSolidLabel = document.getElementById('blueSolidLabel');
+        
+        const outputSize = document.getElementById('outputSize');
+        const originalSizeOption = document.getElementById('originalSizeOption');
+        
+        const outputCanvas = document.getElementById('outputCanvas');
+        const outputCtx = outputCanvas.getContext('2d');
+
+        // Contenedores de Sliders para control de estado visual
+        const redSliderContainer = document.getElementById('redSliderContainer');
+        const greenSliderContainer = document.getElementById('greenSliderContainer');
+        const blueSliderContainer = document.getElementById('blueSliderContainer');
+
+
+        // Contextos de canvas ocultos
+        const hiddenRedCtx = document.getElementById('hiddenRedCanvas').getContext('2d');
+        const hiddenGreenCtx = document.getElementById('hiddenGreenCanvas').getContext('2d');
+        const hiddenBlueCtx = document.getElementById('hiddenBlueCanvas').getContext('2d');
+        const processingCanvas = document.getElementById('processingCanvas');
+        const processingCtx = processingCanvas.getContext('2d');
+        
+        const downloadButton = document.getElementById('downloadButton');
+
+        // NEW: Splitter elements
+        const splitterToggle = document.getElementById('splitterToggle');
+        const splitterContent = document.getElementById('splitterContent');
+        const toggleIcon = document.getElementById('toggleIcon');
+        const ormSplitterLoader = document.getElementById('ormSplitterLoader');
+        const hiddenSplitCanvas = document.getElementById('hiddenSplitCanvas');
+        const hiddenSplitCtx = hiddenSplitCanvas.getContext('2d');
+        const splitRedCanvas = document.getElementById('splitRedCanvas');
+        const splitGreenCanvas = document.getElementById('splitGreenCanvas');
+        const splitBlueCanvas = document.getElementById('splitBlueCanvas');
+        const splitRedCtx = splitRedCanvas.getContext('2d');
+        const splitGreenCtx = splitGreenCanvas.getContext('2d');
+        const splitBlueCtx = splitBlueCanvas.getContext('2d');
+        const splitRedContainer = document.getElementById('splitRedContainer');
+        const splitGreenContainer = document.getElementById('splitGreenContainer');
+        const splitBlueContainer = document.getElementById('splitBlueContainer');
+        const splitterLoadArea = document.getElementById('splitterLoadArea'); // Para Drag & Drop
+        const splitterStatusArea = document.getElementById('splitterStatusArea');
+        const splitterStatus = document.getElementById('splitter-status');
+        const splitterClearButton = document.getElementById('splitterClearButton');
+        const splitterLabel = document.getElementById('splitterLabel');
+
+        // Almacenamiento de imágenes, estado y nombre de archivo
+        const images = {
+            r: new Image(),
+            g: new Image(),
+            b: new Image()
         };
+        const loadState = { r: false, g: false, b: false, splitter: false }; // Añadir estado del splitter
+        const filenames = { r: '', g: '', b: '', splitter: '' }; // Añadir nombre del splitter
+        const splitterImg = new Image(); // Imagen fuente del splitter
+
+        let originalImageSize = { w: 0, h: 0 };
 
 
-        // --- SIGNATURE CANVAS LOGIC ---
-
-        /**
-         * Configura el canvas y sus listeners para la firma.
-         */
-        function initializeSignatureCanvas() {
-            canvas = document.getElementById('signature-canvas');
-            ctx = canvas.getContext('2d');
+        // --- Lógica de Manejo de Carga Genérica (Para input[type=file] y drag-and-drop) ---
+        function handleImageLoad(imageObj, stateKey, hiddenCtx, statusArea, statusElement, sliderInput, sliderContainer, width, height, filename) {
             
-            // Estilos del trazo
-            ctx.strokeStyle = '#000000';
-            ctx.lineJoin = 'round';
-            ctx.lineCap = 'round';
-            ctx.lineWidth = 3;
+            // Si es la primera imagen cargada en la aplicación, actualizamos el tamaño original.
+            if (!loadState.r && !loadState.g && !loadState.b) {
+                originalImageSize.w = width;
+                originalImageSize.h = height;
+            } else if (width > originalImageSize.w) { // Elegir el tamaño más grande si se carga una imagen mayor.
+                originalImageSize.w = width;
+                originalImageSize.h = height;
+            }
+            
+            // Actualizar la opción 'Original'
+            originalSizeOption.text = `Original (${originalImageSize.w}x${originalImageSize.h}px)`;
+            originalSizeOption.disabled = false;
+            
+            loadState[stateKey] = true;
+            filenames[stateKey] = filename; 
+            
+            // Determinar el label "O usa un valor sólido:"
+            const solidLabelId = stateKey + 'SolidLabel';
+            const solidLabel = document.getElementById(solidLabelId);
+            
+            // Actualizar estado visual
+            if (statusElement) {
+                // Truncar nombre del archivo para que no desborde (máx 25 caracteres)
+                const displayFilename = filename.length > 25 ? filename.substring(0, 22) + '...' : filename;
+                statusElement.textContent = `Cargado: ${displayFilename}`;
+                statusArea.classList.remove('hidden'); // Mostrar área de estado 
+            }
+            
+            if (solidLabel) {
+                solidLabel.classList.add('hidden'); // Ocultar "O usa un valor sólido:"
+            }
 
-            // Listeners para ratón
-            canvas.addEventListener('mousedown', (e) => startDrawing(e.offsetX, e.offsetY));
-            canvas.addEventListener('mousemove', (e) => draw(e.offsetX, e.offsetY));
-            canvas.addEventListener('mouseup', stopDrawing);
-            canvas.addEventListener('mouseout', stopDrawing);
+            // Desactivar el slider para este canal
+            if (sliderInput) {
+                sliderInput.disabled = true;
+                sliderContainer.classList.add('opacity-50');
+            }
 
-            // Listeners para tacto (móviles)
-            canvas.addEventListener('touchstart', (e) => {
+            // Redibujar el canvas oculto para la imagen original (escala 1:1)
+            hiddenCtx.canvas.width = width;
+            hiddenCtx.canvas.height = height;
+            hiddenCtx.drawImage(imageObj, 0, 0, width, height);
+            
+            processImage(); // Ejecución inmediata al cargar una imagen
+        }
+
+        function createChannelLoadHandler(imageObj, stateKey, hiddenCtx, statusArea, statusElement, sliderInput, sliderContainer) {
+            return function(event) {
+                const file = event.target.files[0];
+                if (!file) return;
+
+                const url = URL.createObjectURL(file);
+                imageObj.src = url;
+                imageObj.onload = () => {
+                    handleImageLoad(imageObj, stateKey, hiddenCtx, statusArea, statusElement, sliderInput, sliderContainer, imageObj.width, imageObj.height, file.name); 
+                };
+            };
+        }
+        
+        // Asignar manejadores a los 3 canales (Input File)
+        occlusionLoader.addEventListener('change', createChannelLoadHandler(images.r, 'r', hiddenRedCtx, redStatusArea, redStatus, redChannel, redSliderContainer));
+        imageLoader.addEventListener('change', createChannelLoadHandler(images.g, 'g', hiddenGreenCtx, greenStatusArea, greenStatus, greenChannel, greenSliderContainer));
+        metallicLoader.addEventListener('change', createChannelLoadHandler(images.b, 'b', hiddenBlueCtx, blueStatusArea, blueStatus, blueChannel, blueSliderContainer));
+
+
+        // --- Lógica de Drag and Drop para Canales de Empaquetado ---
+        function setupPackerDragAndDrop(containerId, imageObj, stateKey, hiddenCtx, statusArea, statusElement, sliderInput, sliderContainer) {
+            const container = document.getElementById(containerId);
+            const originalBorderClass = container.classList.contains('border-emerald-700') ? 'border-emerald-700' : 'border-gray-700';
+            
+            // 1. Prevenir comportamiento por defecto y añadir feedback visual
+            container.addEventListener('dragover', (e) => {
                 e.preventDefault();
-                const rect = canvas.getBoundingClientRect();
-                const x = e.touches[0].clientX - rect.left;
-                const y = e.touches[0].clientY - rect.top;
-                startDrawing(x, y);
+                const isSplitChannel = e.dataTransfer.types.includes('application/x-split-channel');
+                
+                if (e.dataTransfer.files.length > 0 || isSplitChannel) {
+                    container.classList.add('border-dashed', 'border-4', 'border-blue-400');
+                    container.classList.remove(originalBorderClass);
+                    e.dataTransfer.dropEffect = 'copy';
+                }
             });
-            canvas.addEventListener('touchmove', (e) => {
+
+            container.addEventListener('dragleave', (e) => {
                 e.preventDefault();
-                const rect = canvas.getBoundingClientRect();
-                const x = e.touches[0].clientX - rect.left;
-                const y = e.touches[0].clientY - rect.top;
-                draw(x, y);
+                container.classList.remove('border-dashed', 'border-4', 'border-blue-400');
+                container.classList.add(originalBorderClass);
             });
-            canvas.addEventListener('touchend', stopDrawing);
-        }
-        
-        /**
-         * Ajusta el tamaño real del canvas (atributos width/height) al tamaño visual.
-         * Esto es CRUCIAL para evitar distorsiones al rotar el dispositivo.
-         */
-        function adjustCanvasSize() {
-            if (!canvas || !isModalOpen) return;
             
-            // Obtener el tamaño visual (CSS) actual del canvas
-            const rect = canvas.getBoundingClientRect();
-            const newWidth = rect.width;
-            const newHeight = rect.height;
-
-            // Guardar la imagen actual antes de redimensionar
-            const currentData = signatureDataURL; 
-
-            if (newWidth > 0 && newHeight > 0 && (canvas.width !== newWidth || canvas.height !== newHeight)) {
+            // 2. Manejar el evento drop
+            container.addEventListener('drop', (e) => {
+                e.preventDefault();
+                container.classList.remove('border-dashed', 'border-4', 'border-blue-400');
+                container.classList.add(originalBorderClass);
                 
-                // Redimensionar el canvas (buffer de dibujo)
-                canvas.width = newWidth;
-                canvas.height = newHeight;
-                
-                // Restaurar estilos de dibujo
-                ctx.strokeStyle = '#000000';
-                ctx.lineJoin = 'round';
-                ctx.lineCap = 'round';
-                ctx.lineWidth = 3;
+                // --- A. Handle Split Channel Drop ---
+                const splitChannelId = e.dataTransfer.getData('text/plain');
+                const isSplitChannelDrop = e.dataTransfer.types.includes('application/x-split-channel');
 
-                // Si había una firma, redibujarla para evitar pérdida
-                if (currentData) {
-                    drawSignatureFromDataURL(currentData);
-                } else {
-                    clearSignatureCanvas();
-                }
-            }
-        }
-
-        function startDrawing(x, y) {
-            isDrawing = true;
-            [lastX, lastY] = [x, y];
-        }
-
-        function draw(x, y) {
-            if (!isDrawing) return;
-            ctx.beginPath();
-            ctx.moveTo(lastX, lastY);
-            ctx.lineTo(x, y);
-            ctx.stroke();
-            [lastX, lastY] = [x, y];
-        }
-
-        function stopDrawing() {
-            isDrawing = false;
-        }
-
-        /**
-         * Abre la ventana modal de firma, ajusta el canvas y añade el listener de resize.
-         */
-        window.openSignatureModal = function() {
-            isModalOpen = true;
-            document.getElementById('signature-modal').classList.remove('hidden');
-
-            // Ajustar el canvas después de que el modal sea visible
-            setTimeout(adjustCanvasSize, 50); 
-            
-            // Añadir listener para manejar la rotación/redimensionamiento en tiempo real
-            window.addEventListener('resize', adjustCanvasSize);
-        }
-        
-        /**
-         * Cierra la ventana modal de firma y elimina el listener de resize.
-         */
-        window.closeSignatureModal = function() {
-            isModalOpen = false;
-            document.getElementById('signature-modal').classList.add('hidden');
-            window.removeEventListener('resize', adjustCanvasSize);
-        }
-
-        /**
-         * Borra el contenido del canvas.
-         */
-        window.clearSignatureCanvas = function() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-        }
-
-        /**
-         * Guarda la firma del canvas y la muestra en el formulario.
-         */
-        window.saveSignature = function() {
-            // Verificar si el canvas está vacío (solo fondo blanco)
-            const tempCanvas = document.createElement('canvas');
-            tempCanvas.width = canvas.width;
-            tempCanvas.height = canvas.height;
-            const tempCtx = tempCanvas.getContext('2d');
-            tempCtx.fillStyle = '#FFFFFF';
-            tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
-            const blankDataURL = tempCanvas.toDataURL('image/png');
-            
-            signatureDataURL = canvas.toDataURL('image/png');
-
-            if (signatureDataURL === blankDataURL) {
-                showMessage('Error: La firma no puede estar vacía.', 'error');
-                return;
-            }
-            
-            // Almacenar en el campo oculto
-            document.getElementById('firma_base64').value = signatureDataURL;
-            
-            // Mostrar en el formulario
-            const imgElement = document.getElementById('signature-image');
-            imgElement.src = signatureDataURL;
-            imgElement.classList.remove('hidden');
-            document.getElementById('signature-placeholder').classList.add('hidden');
-            
-            closeSignatureModal();
-            showMessage('Firma guardada con éxito.', 'success');
-        }
-        
-        /**
-         * Dibuja una firma Base64 en el canvas.
-         * @param {string} dataURL - La cadena Base64 de la firma.
-         */
-        function drawSignatureFromDataURL(dataURL) {
-            clearSignatureCanvas();
-            if (!dataURL || dataURL === 'N/A') return;
-            
-            const img = new Image();
-            img.onload = function() {
-                // Escalar la imagen para que quepa en el canvas sin distorsión
-                const scaleX = canvas.width / img.width;
-                const scaleY = canvas.height / img.height;
-                const scale = Math.min(scaleX, scaleY);
-                const x = (canvas.width / 2) - (img.width / 2) * scale;
-                const y = (canvas.height / 2) - (img.height / 2) * scale;
-                
-                // Asegurarse de que el canvas esté blanco de fondo antes de dibujar la imagen
-                ctx.fillStyle = '#FFFFFF';
-                ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-                ctx.drawImage(img, x, y, img.width * scale, img.height * scale);
-            };
-            img.src = dataURL;
-        }
-
-
-        // --- FORM LOGIC ---
-
-        /**
-         * Toggles the visual state of the strategy box when the checkbox changes.
-         * @param {HTMLInputElement} checkbox - The checkbox element.
-         */
-        window.toggleStrategyBox = function(checkbox) {
-            const box = checkbox.closest('.strategy-box');
-            if (checkbox.checked) {
-                box.classList.add('selected');
-            } else {
-                box.classList.remove('selected');
-            }
-        }
-
-        /**
-         * Sets up event listeners for pre-task checks (Sí/No buttons) for all sections.
-         */
-        function setupEventListeners() {
-            // Event listeners for section 1.2 and 1.3
-            document.querySelectorAll('#check-list-1-2 .answer-btn-1-2, #subseccion-1-3 .answer-btn-1-3').forEach(button => {
-                button.addEventListener('click', (event) => {
-                    handleAnswerClick(event.target);
-                });
-            });
-            
-            // Initial setup for the strategy box style
-            document.querySelectorAll('.strategy-checkbox').forEach(checkbox => {
-                toggleStrategyBox(checkbox);
-            });
-        }
-        
-        /**
-         * Handles the visual state and warning checks for an answer button click.
-         * @param {HTMLElement} targetButton - The button that was clicked.
-         */
-        function handleAnswerClick(targetButton) {
-            const selectedAnswer = targetButton.getAttribute('data-answer');
-            const parentDiv = targetButton.closest('div[data-pregunta]');
-            const preguntaKey = parentDiv.getAttribute('data-pregunta');
-
-
-            // 1. Limpiar el estado visual de los botones en el grupo
-            parentDiv.querySelectorAll(`button`).forEach(btn => {
-                btn.classList.remove('btn-selected');
-                if (btn.getAttribute('data-answer') === 'Si') {
-                    btn.classList.replace('bg-green-700', 'bg-green-500');
-                } else {
-                    btn.classList.replace('bg-red-700', 'bg-red-500');
-                }
-            });
-
-            // 2. Aplicar el estado visual al botón seleccionado
-            targetButton.classList.add('btn-selected');
-            if (selectedAnswer === 'Si') {
-                targetButton.classList.replace('bg-green-500', 'bg-green-700');
-            } else {
-                targetButton.classList.replace('bg-red-500', 'bg-red-700');
-            }
-
-            // 3. Lógica específica para la pregunta 1.3.2 (documento_regula)
-            if (preguntaKey === 'documento_regula') {
-                const isSi = selectedAnswer === 'Si';
-                const textarea = document.getElementById('documento_tipo');
-                if (isSi) {
-                    textarea.classList.remove('hidden');
-                } else {
-                    textarea.classList.add('hidden');
-                    textarea.value = ''; // Limpiar si se oculta
-                }
-            }
-
-            // 4. Revisar si alguna respuesta es 'No' para mostrar la alerta
-            checkNoAnswers();
-        }
-
-        /**
-         * Checks if any 'No' answer is selected in the critical lists (1.2 and 1.3.1) and shows/hides the warning alert.
-         */
-        function checkNoAnswers() {
-            let hasNo = false;
-            
-            // Check list 1.2
-            const list12 = document.getElementById('check-list-1-2');
-            list12.querySelectorAll('div[data-pregunta]').forEach(div => {
-                const noButton = div.querySelector('button[data-answer="No"]');
-                if (noButton && noButton.classList.contains('btn-selected')) {
-                    hasNo = true;
-                }
-            });
-
-            // Check question 1.3.1 (capacitado_prevencion)
-            const q131Div = document.querySelector('div[data-pregunta="capacitado_prevencion"]');
-            const noButton131 = q131Div?.querySelector('button[data-answer="No"]');
-            if (noButton131 && noButton131.classList.contains('btn-selected')) {
-                 hasNo = true;
-            }
-
-            // Show/hide the main alert
-            const alertElement = document.getElementById('no-iniciar-alert-1-2');
-            if (hasNo) {
-                 alertElement.classList.remove('hidden');
-                 return true;
-            } else {
-                 alertElement.classList.add('hidden');
-                 return false;
-            }
-        }
-
-        // --- DATA RETRIEVAL AND STORAGE ---
-
-        /**
-         * Gathers all data from the form into a structured object.
-         * @param {boolean} checkFirma - If true, checks if the signature is present.
-         * @returns {object|null} The ART data object or null if validation fails.
-         */
-        function collectFormData(checkFirma = true) {
-            const firma = document.getElementById('firma_base64').value;
-            if (checkFirma && !firma) {
-                 showMessage('Error: La firma del supervisor es obligatoria para previsualizar/guardar.', 'error');
-                 return null;
-            }
-
-            // Validación de campos básicos
-            const requiredInputs = ['empresa', 'supervisor', 'area', 'lugar_especifico', 'fecha', 'hora_inicio', 'hora_termino', 'descripcion'];
-            for (const id of requiredInputs) {
-                if (!document.getElementById(id).value.trim()) {
-                    showMessage(`Error: El campo ${id.toUpperCase()} es obligatorio.`, 'error');
-                    return null;
-                }
-            }
-
-            const antecedentes = {
-                empresa: document.getElementById('empresa').value,
-                supervisor: document.getElementById('supervisor').value,
-                area: document.getElementById('area').value,
-                lugar_especifico: document.getElementById('lugar_especifico').value,
-                fecha: document.getElementById('fecha').value,
-                hora_inicio: document.getElementById('hora_inicio').value,
-                hora_termino: document.getElementById('hora_termino').value,
-                descripcion: document.getElementById('descripcion').value,
-                firma_base64: firma, // Incluir la firma
-            };
-
-            // Chequeo 1.2
-            const chequeo_trabajador = {};
-            let hasValidationError = false;
-            document.querySelectorAll('#check-list-1-2 > div').forEach(div => {
-                const key = div.getAttribute('data-pregunta');
-                const selectedButton = div.querySelector('.btn-selected');
-                if (!selectedButton) {
-                    showMessage(`Error: Debe contestar la pregunta sobre '${key}'.`, 'error');
-                    hasValidationError = true;
-                    return;
-                }
-                chequeo_trabajador[key] = selectedButton ? selectedButton.getAttribute('data-answer') : 'N/A';
-            });
-            if (hasValidationError) return null;
-
-            
-            // Chequeo 1.3
-            const chequeo_tarea = {};
-            document.querySelectorAll('#subseccion-1-3 > div').forEach(div => {
-                const key = div.getAttribute('data-pregunta');
-                const selectedButton = div.querySelector('.btn-selected');
-                if (!selectedButton) {
-                    showMessage(`Error: Debe contestar la pregunta sobre '${key}'.`, 'error');
-                    hasValidationError = true;
-                    return;
-                }
-                chequeo_tarea[key] = selectedButton ? selectedButton.getAttribute('data-answer') : 'N/A';
-            });
-            if (hasValidationError) return null;
-            
-            // Añadir campo de tipeo condicional para 1.3.2
-            const docInput = document.getElementById('documento_tipo');
-            if (docInput.classList.contains('hidden')) {
-                 chequeo_tarea.documento_tipo = '';
-            } else {
-                 chequeo_tarea.documento_tipo = docInput.value;
-            }
-
-            // Estrategias de Control 1.4
-            const estrategias_control = [];
-            document.querySelectorAll('.strategy-checkbox').forEach(checkbox => {
-                if (checkbox.checked) {
-                    estrategias_control.push(checkbox.getAttribute('data-strategy-name'));
-                }
-            });
-            
-            return {
-                antecedentes,
-                chequeo: {
-                    trabajador: chequeo_trabajador,
-                    tarea: chequeo_tarea
-                },
-                estrategias_control,
-                timestamp: new Date().toISOString(),
-                savedBy: "DemoUser" // Valor estático ya que no hay login
-            };
-        }
-        
-        /**
-         * Helper function to render the checklist HTML.
-         */
-        function renderChecklist(data, questions, keys) {
-            let html = '';
-            keys.forEach((key, index) => {
-                const answer = data[key] || 'N/A';
-                const resultClass = answer === 'Si' ? 'pdf-check-result-si' : (answer === 'No' ? 'pdf-check-result-no' : 'text-gray-400');
-                // Buscamos la pregunta original usando el índice (asumiendo que keys y questions tienen el mismo orden)
-                const questionText = questions[index];
-
-                html += `
-                    <div class="pdf-check-item">
-                        <span class="flex-1">${questionText}</span>
-                        <span class="${resultClass}">${answer}</span>
-                    </div>
-                `;
-            });
-            return html;
-        }
-
-        /**
-         * Generates the HTML content for the PDF preview modal.
-         * @param {object} artData - The collected form data.
-         * @returns {string} The HTML string for the preview.
-         */
-        function generatePdfHtml(artData) {
-            const { antecedentes, chequeo, estrategias_control, timestamp } = artData;
-            
-            // Nota: No ponemos clases de contenedor aquí porque el contenedor externo (.paper-sheet) ya tiene el ancho fijo
-            let html = `
-                <header class="text-center mb-6">
-                    <h1 class="text-2xl font-extrabold text-red-700 uppercase">ANÁLISIS DE RIESGOS DE LA TAREA (ART)</h1>
-                    <p class="text-xs text-gray-500 mt-2">Generado: ${new Date(timestamp).toLocaleDateString()} ${new Date(timestamp).toLocaleTimeString()}</p>
-                </header>
-
-                <!-- 1.1 ANTECEDENTES DEL TRABAJO -->
-                <h2 class="pdf-section-title">1.1) ANTECEDENTES DEL TRABAJO</h2>
-                <div class="space-y-0">
-                    <div class="pdf-data-item"><span class="pdf-data-label">EMPRESA:</span><span class="pdf-data-value">${antecedentes.empresa.toUpperCase()}</span></div>
-                    <div class="pdf-data-item"><span class="pdf-data-label">SUPERVISOR:</span><span class="pdf-data-value">${antecedentes.supervisor.toUpperCase()}</span></div>
-                    <div class="pdf-data-item"><span class="pdf-data-label">ÁREA:</span><span class="pdf-data-value">${antecedentes.area.toUpperCase()}</span></div>
-                    <div class="pdf-data-item"><span class="pdf-data-label">LUGAR:</span><span class="pdf-data-value">${antecedentes.lugar_especifico.toUpperCase()}</span></div>
-                    <div class="pdf-data-item"><span class="pdf-data-label">FECHA / HORA:</span><span class="pdf-data-value">${antecedentes.fecha} | ${antecedentes.hora_inicio} - ${antecedentes.hora_termino}</span></div>
-                    <div class="pt-2"><span class="pdf-data-label block mb-1">DESCRIPCIÓN:</span><p class="text-sm border p-2 bg-gray-50">${antecedentes.descripcion.toUpperCase()}</p></div>
-                </div>
-
-                <!-- Firma -->
-                <div class="mt-2 flex justify-end">
-                    <div class="w-1/2 text-center">
-                        <div class="pdf-signature-box">
-                            <img src="${antecedentes.firma_base64}" alt="Firma Digital" class="pdf-signature-image">
-                        </div>
-                        <span class="text-xs font-bold text-gray-600 mt-1 block">FIRMA SUPERVISOR</span>
-                    </div>
-                </div>
-
-                <!-- 1.2 DE LOS TRABAJADORES -->
-                <h2 class="pdf-section-title text-red-700 border-red-700">1.2) DE LOS TRABAJADORES</h2>
-                <div class="text-sm">
-                    ${renderChecklist(chequeo.trabajador, [
-                        "1. ¿Condiciones físicas/psicológicas aptas?",
-                        "2. ¿Entorno seguro?",
-                        "3. ¿Áreas de trabajo en condiciones?",
-                        "4. ¿Posee EPP específicos?",
-                        "5. ¿Equipos/Herramientas ok?",
-                        "6. ¿Conoce plan de emergencia?"
-                    ], ['condiciones_fisicas', 'condiciones_entorno', 'areas_condiciones', 'epp_especificos', 'equipos_herramientas', 'actuar_emergencia'])}
-                </div>
-                
-                <p class="text-xs text-red-600 font-bold mt-1">RESULTADO: ${checkNoAnswers() ? 'NO INICIAR (HAY RESPUESTAS "NO")' : 'APROBADO PARA INICIO'}</p>
-
-                <!-- 1.3 DE LA TAREA -->
-                <h2 class="pdf-section-title text-blue-700 border-blue-700">1.3) DE LA TAREA</h2>
-                <div class="text-sm">
-                    ${renderChecklist(chequeo.tarea, [
-                        "1. ¿Capacitado y conoce medidas preventivas?",
-                        "2. ¿Existe documento regulador (Procedimiento/Manual)?",
-                        "3. ¿El documento incluye todas las actividades?"
-                    ], ['capacitado_prevencion', 'documento_regula', 'alcance_actividades'])}
+                if (isSplitChannelDrop && splitChannelId) {
+                    const splitContainer = document.getElementById(splitChannelId);
+                    const sourceCanvas = splitContainer ? splitContainer.querySelector('canvas') : null;
                     
-                    ${chequeo.tarea.documento_tipo ? `<div class="pdf-data-item ml-4 text-xs"><span class="pdf-data-label">Doc:</span><span class="pdf-data-value text-left">${chequeo.tarea.documento_tipo.toUpperCase()}</span></div>` : ''}
-                </div>
+                    if (sourceCanvas && sourceCanvas.dataset.fullDataUrl) {
+                        const url = sourceCanvas.dataset.fullDataUrl;
+                        const w = parseInt(sourceCanvas.dataset.originalWidth);
+                        const h = parseInt(sourceCanvas.dataset.originalHeight);
+                        const filename = `SPLIT_${splitContainer.dataset.channelName.toUpperCase()}_${w}.png`; // Crear un nombre único
 
-                <!-- 1.4 ESTRATEGIAS DE CONTROL -->
-                <h2 class="pdf-section-title text-teal-700 border-teal-700">1.4) CONTROLES APLICADOS</h2>
-                <div class="text-sm">
-                    ${estrategias_control.length > 0 
-                        ? `<ul class="grid grid-cols-2 gap-x-4 gap-y-1 list-disc ml-5 mt-1">${estrategias_control.map(e => `<li>${e}</li>`).join('')}</ul>`
-                        : `<p class="italic text-gray-500">Ninguno seleccionado.</p>`
+                        imageObj.src = url;
+                        imageObj.onload = () => {
+                            handleImageLoad(imageObj, stateKey, hiddenCtx, statusArea, statusElement, sliderInput, sliderContainer, w, h, filename);
+                        };
+                        return; // Salir si un canal separado fue manejado
                     }
-                </div>
-            `;
+                }
 
-            return html;
+                // --- B. Handle External File Drop (Original Logic) ---
+                const file = e.dataTransfer.files[0];
+                if (file && file.type.startsWith('image/')) {
+                    const url = URL.createObjectURL(file);
+                    
+                    imageObj.src = url;
+                    imageObj.onload = () => {
+                        handleImageLoad(imageObj, stateKey, hiddenCtx, statusArea, statusElement, sliderInput, sliderContainer, imageObj.width, imageObj.height, file.name); 
+                    };
+                } else if (!isSplitChannelDrop) { 
+                    if (statusElement) {
+                         statusElement.textContent = `Error: Archivo no válido.`;
+                         statusArea.classList.remove('hidden'); 
+                         setTimeout(() => statusArea.classList.add('hidden'), 3000); 
+                    }
+                }
+            });
         }
         
-        /**
-         * Prepares and displays the PDF preview modal.
-         */
-        window.showPdfPreview = function() {
-            const artData = collectFormData(true); // Requiere firma para previsualizar
-            if (!artData) {
-                // Mensaje de error ya mostrado en collectFormData
-                return;
+        // Asignar manejadores Drag and Drop a los 3 contenedores
+        setupPackerDragAndDrop('occlusionContainer', images.r, 'r', hiddenRedCtx, redStatusArea, redStatus, redChannel, redSliderContainer);
+        setupPackerDragAndDrop('roughnessContainer', images.g, 'g', hiddenGreenCtx, greenStatusArea, greenStatus, greenChannel, greenSliderContainer);
+        setupPackerDragAndDrop('metallicContainer', images.b, 'b', hiddenBlueCtx, blueStatusArea, blueStatus, blueChannel, blueSliderContainer);
+
+        // --- Lógica de Drag Start para Split Results ---
+        [splitRedContainer, splitGreenContainer, splitBlueContainer].forEach(container => {
+            container.addEventListener('dragstart', (e) => {
+                const canvas = container.querySelector('canvas');
+                if (!canvas.dataset.fullDataUrl) {
+                    e.preventDefault();
+                    return;
+                }
+                e.dataTransfer.setData('text/plain', container.id);
+                e.dataTransfer.setData('application/x-split-channel', 'true');
+                e.dataTransfer.effectAllowed = 'copy';
+                
+                // Imagen fantasma
+                if (canvas.width > 0) {
+                    e.dataTransfer.setDragImage(canvas, canvas.width / 2, canvas.height / 2);
+                }
+            });
+
+            container.addEventListener('dragend', (e) => {
+                const canvas = container.querySelector('canvas');
+                if (!canvas.dataset.fullDataUrl) {
+                    e.preventDefault();
+                }
+            });
+        });
+
+
+        // --- Lógica para Eliminar Textura (Borrado de Canales) ---
+        function clearChannel(stateKey) {
+            
+            const dataMap = {
+                r: { ctx: hiddenRedCtx, statusArea: redStatusArea, slider: redChannel, sliderContainer: redSliderContainer, solidLabel: redSolidLabel },
+                g: { ctx: hiddenGreenCtx, statusArea: greenStatusArea, slider: greenChannel, sliderContainer: greenSliderContainer, solidLabel: greenSolidLabel },
+                b: { ctx: hiddenBlueCtx, statusArea: blueStatusArea, slider: blueChannel, sliderContainer: blueSliderContainer, solidLabel: blueSolidLabel }
+            };
+
+            const { ctx, statusArea, slider, sliderContainer, solidLabel } = dataMap[stateKey];
+
+            // 1. Resetear estado
+            loadState[stateKey] = false;
+            filenames[stateKey] = '';
+
+            // 2. Limpiar el canvas oculto 
+            ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+            ctx.canvas.width = 1; 
+            ctx.canvas.height = 1;
+
+            // 3. Ocultar status y mostrar label sólido
+            statusArea.classList.add('hidden');
+            solidLabel.classList.remove('hidden');
+
+            // 4. Re-habilitar slider
+            slider.disabled = false;
+            sliderContainer.classList.remove('opacity-50');
+
+            // 5. Verificar si se debe resetear el tamaño original
+            const anyImageLoaded = loadState.r || loadState.g || loadState.b;
+            if (!anyImageLoaded) {
+                 originalImageSize = { w: 0, h: 0 };
+                 originalSizeOption.text = `Original (Cargar una imagen primero)`;
+                 originalSizeOption.disabled = true;
+                 outputSize.value = "1024"; // Resetear al tamaño por defecto
+            }
+
+            // 6. Reprocesar la imagen
+            processImage(); 
+        }
+        
+        // Asignar manejadores a los botones de limpieza de canales de empaquetado
+        redClearButton.addEventListener('click', () => clearChannel('r'));
+        greenClearButton.addEventListener('click', () => clearChannel('g'));
+        blueClearButton.addEventListener('click', () => clearChannel('b'));
+
+        // --- Debounce y Lógica de Sliders/Tamaño ---
+        
+        const debouncedProcessImage = debounce(processImage, 50);
+
+        redChannel.addEventListener('input', () => {
+            redValueLabel.textContent = `Valor: ${redChannel.value} (${redChannel.value > 128 ? 'Blanco' : 'Negro'})`;
+            debouncedProcessImage();
+        });
+        
+        greenChannel.addEventListener('input', () => {
+            greenValueLabel.textContent = `Valor: ${greenChannel.value} (${greenChannel.value > 128 ? 'Brillante' : 'Mate'})`;
+            debouncedProcessImage();
+        });
+
+        blueChannel.addEventListener('input', () => {
+            blueValueLabel.textContent = `Valor: ${blueChannel.value} (${blueChannel.value > 128 ? 'Blanco' : 'Negro'})`;
+            debouncedProcessImage();
+        });
+
+        outputSize.addEventListener('input', debouncedProcessImage);
+
+
+        // --- Lógica del Splitter ---
+
+        // Toggle (Desplegable)
+        splitterToggle.addEventListener('click', () => {
+            const isHidden = splitterContent.classList.toggle('hidden');
+            toggleIcon.style.transform = isHidden ? 'rotate(0deg)' : 'rotate(180deg)';
+        });
+
+        // ----------------------------------------------------
+        // Lógica de Carga y Drag&Drop para el ORM Splitter (Nuevo)
+        // ----------------------------------------------------
+
+        // A. Carga por Input File
+        ormSplitterLoader.addEventListener('change', (event) => {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const url = URL.createObjectURL(file);
+            splitterImg.src = url;
+            splitterImg.onload = () => {
+                handleSplitterLoad(splitterImg, file.name);
+                URL.revokeObjectURL(url); 
+            };
+        });
+        
+        // B. Carga por Drag & Drop
+        splitterLoadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            const file = e.dataTransfer.files[0];
+            if (file && file.type.startsWith('image/')) {
+                splitterLoadArea.classList.add('border-dashed', 'border-4', 'border-blue-400');
+                e.dataTransfer.dropEffect = 'copy';
+            }
+        });
+
+        splitterLoadArea.addEventListener('dragleave', (e) => {
+            e.preventDefault();
+            splitterLoadArea.classList.remove('border-dashed', 'border-4', 'border-blue-400');
+        });
+
+        splitterLoadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            splitterLoadArea.classList.remove('border-dashed', 'border-4', 'border-blue-400');
+            
+            const file = e.dataTransfer.files[0];
+            if (file && file.type.startsWith('image/')) {
+                const url = URL.createObjectURL(file);
+                splitterImg.src = url;
+                splitterImg.onload = () => {
+                    handleSplitterLoad(splitterImg, file.name);
+                    URL.revokeObjectURL(url); 
+                };
+            }
+        });
+
+        // C. Función Manejadora de Carga de Splitter
+        function handleSplitterLoad(img, filename) {
+            loadState.splitter = true;
+            filenames.splitter = filename;
+
+            // Actualizar interfaz
+            const displayFilename = filename.length > 25 ? filename.substring(0, 22) + '...' : filename;
+            splitterStatus.textContent = `Cargado: ${displayFilename}`;
+            splitterStatusArea.classList.remove('hidden');
+            splitterLabel.classList.add('hidden'); // Ocultar el botón de carga
+
+            // Habilitar miniaturas arrastrables
+            [splitRedContainer, splitGreenContainer, splitBlueContainer].forEach(container => {
+                container.classList.remove('opacity-50', 'pointer-events-none');
+            });
+            
+            // Ejecutar la separación
+            splitOrmImage(img);
+        }
+
+        // D. Función de Borrado del Splitter
+        splitterClearButton.addEventListener('click', clearSplitter);
+
+        function clearSplitter() {
+            loadState.splitter = false;
+            filenames.splitter = '';
+
+            // Limpiar canvas oculto y previews
+            hiddenSplitCtx.clearRect(0, 0, hiddenSplitCanvas.width, hiddenSplitCanvas.height);
+            hiddenSplitCanvas.width = 1;
+            hiddenSplitCanvas.height = 1;
+            
+            [splitRedCtx, splitGreenCtx, splitBlueCtx].forEach(ctx => {
+                ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+            });
+            
+            [splitRedCanvas, splitGreenCanvas, splitBlueCanvas].forEach(canvas => {
+                delete canvas.dataset.fullDataUrl;
+            });
+
+            // Resetear interfaz
+            splitterStatusArea.classList.add('hidden');
+            splitterLabel.classList.remove('hidden');
+            
+            // Deshabilitar miniaturas arrastrables
+            [splitRedContainer, splitGreenContainer, splitBlueContainer].forEach(container => {
+                container.classList.add('opacity-50', 'pointer-events-none');
+            });
+        }
+
+
+        // E. Función de Desglosar (Split)
+        function splitOrmImage(img) {
+            const w = img.width;
+            const h = img.height;
+            
+            // 1. Dibujar la imagen de origen
+            hiddenSplitCanvas.width = w;
+            hiddenSplitCanvas.height = h;
+            hiddenSplitCtx.drawImage(img, 0, 0);
+            
+            const imageData = hiddenSplitCtx.getImageData(0, 0, w, h);
+            const data = imageData.data;
+            const length = data.length;
+
+            // 2. Crear datos de imagen para los 3 canales
+            const redImageData = hiddenSplitCtx.createImageData(w, h);
+            const greenImageData = hiddenSplitCtx.createImageData(w, h);
+            const blueImageData = hiddenSplitCtx.createImageData(w, h);
+
+            const redData = redImageData.data;
+            const greenData = greenImageData.data;
+            const blueData = blueImageData.data;
+
+            // 3. Iterar y separar los canales
+            for (let i = 0; i < length; i += 4) {
+                // R (Occlusion)
+                redData[i + 0] = data[i + 0]; 
+                redData[i + 1] = data[i + 0]; // Grayscale
+                redData[i + 2] = data[i + 0]; // Grayscale
+                redData[i + 3] = 255;
+
+                // G (Roughness)
+                greenData[i + 0] = data[i + 1]; // Grayscale
+                greenData[i + 1] = data[i + 1]; 
+                greenData[i + 2] = data[i + 1]; // Grayscale
+                greenData[i + 3] = 255;
+
+                // B (Metallic)
+                blueData[i + 0] = data[i + 2]; // Grayscale
+                blueData[i + 1] = data[i + 2]; // Grayscale
+                blueData[i + 2] = data[i + 2]; 
+                blueData[i + 3] = 255;
+            }
+
+            // 4. Dibujar vistas previas y generar DataURLs de alta resolución
+            const previewSize = 96;
+
+            [splitRedCanvas, splitGreenCanvas, splitBlueCanvas].forEach(canvas => {
+                canvas.width = previewSize; 
+                canvas.height = previewSize;
+            });
+
+            function drawSplitPreview(sourceImageData, previewCtx) {
+                const tempCanvas = document.createElement('canvas');
+                const tempCtx = tempCanvas.getContext('2d');
+                tempCanvas.width = w;
+                tempCanvas.height = h;
+                tempCtx.putImageData(sourceImageData, 0, 0);
+                
+                previewCtx.imageSmoothingEnabled = false;
+                previewCtx.drawImage(tempCanvas, 0, 0, w, h, 0, 0, previewCtx.canvas.width, previewCtx.canvas.height);
             }
             
-            // NO guardamos en la base de datos, solo generamos el HTML
-            const pdfContentHtml = generatePdfHtml(artData);
-            document.getElementById('pdf-content').innerHTML = pdfContentHtml;
-            document.getElementById('pdf-preview-modal').classList.remove('hidden');
+            // Dibujar las miniaturas
+            drawSplitPreview(redImageData, splitRedCtx);
+            drawSplitPreview(greenImageData, splitGreenCtx);
+            drawSplitPreview(blueImageData, splitBlueCtx);
+            
+            // 5. Almacenar DataURL de alta resolución y tamaño original para el Drag-and-Drop
+            function getFullResDataUrl(imageData, w, h) {
+                const tempCanvas = document.createElement('canvas');
+                const tempCtx = tempCanvas.getContext('2d');
+                tempCanvas.width = w;
+                tempCanvas.height = h;
+                tempCtx.putImageData(imageData, 0, 0);
+                return tempCanvas.toDataURL('image/png');
+            }
+            
+            splitRedCanvas.dataset.fullDataUrl = getFullResDataUrl(redImageData, w, h);
+            splitGreenCanvas.dataset.fullDataUrl = getFullResDataUrl(greenImageData, w, h);
+            splitBlueCanvas.dataset.fullDataUrl = getFullResDataUrl(blueImageData, w, h);
+
+            [splitRedCanvas, splitGreenCanvas, splitBlueCanvas].forEach(canvas => {
+                canvas.dataset.originalWidth = w;
+                canvas.dataset.originalHeight = h;
+            });
         }
 
-        /**
-         * Closes the PDF preview modal.
-         */
-        window.closePreviewModal = function() {
-            document.getElementById('pdf-preview-modal').classList.add('hidden');
-        }
 
-        /**
-         * Uses html2canvas and jsPDF to generate and download the ART as a PDF file.
-         */
-        window.saveArtAsPdf = async function() {
-            // 1. Seleccionamos el elemento .paper-sheet que YA TIENE el formato de escritorio (800px)
-            const content = document.getElementById('pdf-content');
-            if (!content) {
-                showMessage('Error: No hay documento para descargar.', 'error');
-                return;
+        // 6. Función principal de procesamiento (sin cambios)
+        function processImage() {
+            // Obtener el tamaño de salida deseado (Este es el tamaño MAESTRO de la textura ORM)
+            let targetWidth, targetHeight;
+            const sizeValue = outputSize.value;
+            
+            if (sizeValue === 'original' && originalImageSize.w > 0) {
+                targetWidth = originalImageSize.w;
+                targetHeight = originalImageSize.h;
+            } else if (sizeValue === 'original' && originalImageSize.w === 0) {
+                 // Si 'Original' está seleccionado pero no hay imagen cargada, usamos el valor por defecto
+                targetWidth = 1024;
+                targetHeight = 1024;
+            } else {
+                targetWidth = parseInt(sizeValue);
+                targetHeight = parseInt(sizeValue);
             }
 
-            showMessage('Descargando documento...', 'info');
+            // --- A. Ajustar y Redibujar Imágenes de Entrada al Tamaño Maestro ---
+            
+            processingCanvas.width = targetWidth;
+            processingCanvas.height = targetHeight;
+            
+            // Creamos canvases temporales para dibujar la imagen original escalada.
+            function redrawScaledChannel(sourceCtx, targetWidth, targetHeight) {
+                const tempCanvas = document.createElement('canvas');
+                const tempCtx = tempCanvas.getContext('2d');
+                tempCanvas.width = targetWidth;
+                tempCanvas.height = targetHeight;
 
-            try {
-                // 2. Captura DIRECTA (sin clones ni trucos)
-                const canvas = await html2canvas(content, { 
-                    scale: 1.5, // Calidad media/alta suficiente para A4
-                    useCORS: true,
-                });
-
-                // 3. Generar PDF
-                const imgData = canvas.toDataURL('image/png');
-                const { jsPDF } = window.jspdf;
-                
-                const pdf = new jsPDF('p', 'mm', 'a4');
-                const pdfWidth = pdf.internal.pageSize.getWidth();
-                const pdfHeight = pdf.internal.pageSize.getHeight();
-                
-                // Ajustar altura
-                const imgHeight = canvas.height * pdfWidth / canvas.width;
-                let heightLeft = imgHeight;
-                let position = 0;
-
-                pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, imgHeight);
-                heightLeft -= pdfHeight;
-
-                // Manejo de múltiples páginas si es muy largo
-                while (heightLeft > 0) {
-                    position = heightLeft - imgHeight;
-                    pdf.addPage();
-                    pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, imgHeight);
-                    heightLeft -= pdfHeight;
+                if (sourceCtx.canvas.width > 1) { // Solo si hay imagen cargada
+                    tempCtx.imageSmoothingEnabled = false;
+                    tempCtx.drawImage(sourceCtx.canvas, 0, 0, sourceCtx.canvas.width, sourceCtx.canvas.height, 0, 0, targetWidth, targetHeight);
                 }
-                
-                const filename = `ART_${new Date().getTime()}.pdf`;
-                pdf.save(filename);
-                
-                showMessage('¡Archivo descargado!', 'success');
-                
-            } catch (error) {
-                console.error("Error al generar PDF:", error);
-                showMessage(`Error: ${error.message}`, 'error');
+                return tempCtx.getImageData(0, 0, targetWidth, targetHeight).data;
             }
+            
+            const redPixels = redrawScaledChannel(hiddenRedCtx, targetWidth, targetHeight);
+            const greenPixels = redrawScaledChannel(hiddenGreenCtx, targetWidth, targetHeight);
+            const bluePixels = redrawScaledChannel(hiddenBlueCtx, targetWidth, targetHeight);
+            
+            // --- B. Obtener datos finales para el empaquetado ---
+            
+            // Obtener valores de slider como fallback (para canales sin imagen cargada)
+            const redValue = parseInt(redChannel.value);
+            const greenValue = parseInt(greenChannel.value);
+            const blueValue = parseInt(blueChannel.value);
+
+            // Crear datos de imagen para la salida ORM
+            const outputImageData = processingCtx.createImageData(targetWidth, targetHeight);
+            const outputPixels = outputImageData.data;
+
+            const totalPixels = targetWidth * targetHeight;
+
+            // Iterar y empaquetar canales (4 bytes por píxel: R, G, B, A)
+            for (let i = 0; i < totalPixels * 4; i += 4) {
+                // R (Occlusion): Si hay imagen (canvas > 1x1), usa el canal R. Si no, usa el valor del slider.
+                const r = loadState.r ? redPixels[i + 0] : redValue; 
+
+                // G (Roughness): Si hay imagen, usa el canal R. Si no, usa el valor del slider.
+                const g = loadState.g ? greenPixels[i + 0] : greenValue; 
+
+                // B (Metallic): Si hay imagen, usa el canal R. Si no, usa el valor del slider.
+                const b = loadState.b ? bluePixels[i + 0] : blueValue;
+
+
+                outputPixels[i + 0] = r;   // Canal Rojo (Occlusion)
+                outputPixels[i + 1] = g;   // Canal Verde (Roughness)
+                outputPixels[i + 2] = b;   // Canal Azul (Metallic)
+                outputPixels[i + 3] = 255; // Canal Alfa (Opacidad total)
+            }
+            
+            // Poner los datos combinados en el canvas de procesamiento
+            processingCtx.putImageData(outputImageData, 0, 0);
+
+            // --- C. Dibujar resultado final en el canvas de salida visible ---
+
+            outputCanvas.width = targetWidth;
+            outputCanvas.height = targetHeight;
+            outputCtx.imageSmoothingEnabled = false;
+
+            outputCtx.drawImage(
+                processingCanvas, 
+                0, 0, targetWidth, targetHeight, 
+                0, 0, targetWidth, targetHeight  
+            );
         }
+
+        // 7. Lógica de Descarga
+        downloadButton.addEventListener('click', () => {
+            const dataURL = outputCanvas.toDataURL('image/png');
+            const link = document.createElement('a');
+            link.download = `ORM_Texture_${outputCanvas.width}x${outputCanvas.height}.png`;
+            link.href = dataURL;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        });
+
+        // Inicializar el canvas al cargar
+        processImage();
+
+    </script>
+</body>
+</html>
