@@ -430,7 +430,7 @@
 
             <!-- Acciones de Guardado e Impresión -->
             <div id="preview-actions" class="flex justify-end space-x-4 p-4 border-t bg-gray-50 flex-shrink-0">
-                <button onclick="saveArt()" class="bg-green-600 hover:bg-green-700 text-white font-extrabold py-3 px-6 rounded-lg shadow-lg transition duration-150">
+                <button onclick="saveArt()" class="hidden bg-green-600 hover:bg-green-700 text-white font-extrabold py-3 px-6 rounded-lg shadow-lg transition duration-150">
                     ✅ Guardar ART Localmente
                 </button>
                 <button onclick="window.print()" class="bg-red-600 hover:bg-red-700 text-white font-extrabold py-3 px-6 rounded-lg shadow-lg transition duration-150">
@@ -950,7 +950,10 @@
             }
 
             const pdfContentHtml = generatePdfHtml(artData);
-            document.getElementById('pdf-content').innerHTML = pdfContentHtml;
+            const pdfContainer = document.getElementById('pdf-content');
+pdfContainer.innerHTML = "";      // ← limpia contenido previo
+pdfContainer.insertAdjacentHTML("beforeend", pdfContentHtml);
+
             document.getElementById('pdf-preview-modal').classList.remove('hidden');
         }
 
