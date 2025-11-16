@@ -159,24 +159,47 @@
     }
 
     body {
-        background: white;
+        background: white !important;
     }
 
-    /* Ocultar completamente el modal de previsualización */
+    /* Mantener visible SOLO el contenido PDF */
     #pdf-preview-modal {
+        display: block !important;        /* Mostrar el modal */
+        position: static !important;
+        background: white !important;
+        box-shadow: none !important;
+        width: 100% !important;
+        height: auto !important;
+    }
+
+    /* Ocultar el fondo oscuro del modal */
+    #pdf-preview-modal::before {
         display: none !important;
     }
 
-    /* Asegurar que SOLO el contenido PDF se imprima */
-    #pdf-content {
-        display: block !important;
+    /* Ocultar el encabezado y botones del modal */
+    #pdf-preview-modal > div > div:first-child,
+    #preview-actions {
+        display: none !important;
     }
 
+    /* ESTE es el contenido REAL del PDF */
+    #pdf-content {
+        display: block !important;
+        padding: 0 !important;
+        margin: 0 !important;
+    }
+
+    /* Ajustar el contenedor del PDF */
     .pdf-preview-container {
-        box-shadow: none;
-        max-width: 100%;
+        box-shadow: none !important;
+        max-width: 100% !important;
+        width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
     }
 }
+
 
 
     </style>
