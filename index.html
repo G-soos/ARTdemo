@@ -4,12 +4,18 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
     <title>Análisis de Riesgos de la Tarea (ART)</title>
+
+    <!-- Tailwind -->
     <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- html2pdf (para generar PDF en cliente) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
         body { font-family: 'Inter', sans-serif; background-color: #f7f7f9; }
 
-        /* --- Signature styles (kept) --- */
+        /* Signature display box */
         #signature-display-box {
             min-height: 80px;
             background-color: #e2e8f0;
@@ -25,12 +31,14 @@
         .strategy-checkbox { position:absolute; top:8px; right:8px; width:1.25rem; height:1.25rem; accent-color:#0d9488; }
 
         /* PREVIEW / PDF page fixed A4-like (px) */
+        /* We keep the visible container at A4 approx size and internal padding.
+           html2pdf will render this element to an actual A4 PDF. */
         .pdf-page {
             width: 794px; /* aprox A4 @ 96dpi */
             min-height: 1123px;
             margin: 0 auto;
             background: #fff;
-            padding: 32px;
+            padding: 32px; /* "márgenes actuales" internos */
             box-sizing: border-box;
             color: #1f2937;
             font-size: 13px;
@@ -47,24 +55,15 @@
         .pdf-check-result-si { color:#10b981; font-weight:700; }
         .pdf-check-result-no { color:#ef4444; font-weight:700; }
 
-        /* small helpers */
-        .hidden-el { display:none !important; }
+        /* Hide preview actions from being shown INSIDE the pdf (they are outside the .pdf-page) */
+        .preview-action-hidden { display:none !important; }
 
-        /* Print rules: show only the preview modal content (the PDF page) */
-        @media print {
-            body * { visibility: hidden; }
-            #pdf-preview-modal, #pdf-preview-modal * { visibility: visible; }
-            #pdf-preview-modal { position: absolute; left: 0; top: 0; width: 100%; height: auto; }
-            .pdf-page { margin: 0; box-shadow:none; border:none; width: 100%; min-height: auto; }
-        }
-
-        /* Mobile-specific wizard container styling */
+        /* Mobile wizard helpers */
         #wizard-container { max-width: 640px; margin: 0 auto; }
         .wizard-step { display: none; }
         .wizard-step.active { display: block; }
 
-        /* Make preview modal center nicely */
-        #pdf-preview-modal > div { display:flex; justify-content:center; align-items:flex-start; padding:24px; }
+        /* Print styles removed (we generate PDF programmatically) */
     </style>
 </head>
 <body class="p-4 sm:p-8">
@@ -80,11 +79,11 @@
             <h1 class="text-3xl sm:text-4xl font-extrabold text-gray-800">ART: Análisis de Riesgos de la Tarea (Chequeo Pre-Tarea)</h1>
         </header>
 
-        <!-- CONTAINER PARA FORMULARIO / WIZARD -->
+        <!-- FORM ROOT (full form and wizard) -->
         <div id="form-root">
-            <!-- El formulario completo (escritorio) -->
+            <!-- Full form (desktop) -->
             <div id="full-form" class="">
-                <!-- Mantuvimos la estructura original (abreviado aquí para brevedad) -->
+                <!-- Etapa 1 (kept full structure) -->
                 <section id="etapa1-section" class="mb-10">
                     <h2 class="text-2xl font-bold text-red-700 mb-6 border-b-2 border-red-700 pb-2">I) ETAPA 1</h2>
 
@@ -114,9 +113,10 @@
                         </div>
                     </div>
 
-                    <!-- Subsección 1.2 -->
+                    <!-- 1.2 -->
                     <div class="p-5 bg-red-50 rounded-lg border border-red-200 mb-8" id="subseccion-1-2">
                         <h3 class="text-xl font-semibold text-red-600 mb-4 border-b border-red-300 pb-2">1.2) DE LOS TRABAJADORES: CONTESTE CADA PREGUNTA</h3>
+
                         <div id="no-iniciar-alert-1-2" class="hidden p-4 mb-4 text-sm text-yellow-800 rounded-lg bg-yellow-100" role="alert">
                             <svg class="flex-shrink-0 inline w-4 h-4 me-3" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
                                 <path d="M10 .5a9.5 9.5 0 1 0 9.5 9.5A9.51 9.51 0 0 0 10 .5ZM10 15a1 1 0 1 1 0-2 1 1 0 0 1 0 2Zm1-4a1 1 0 0 1-2 0V6a1 1 0 0 1 2 0v5Z"/>
@@ -125,7 +125,6 @@
                         </div>
 
                         <div id="check-list-1-2">
-                            <!-- preguntas 1.2 (repetidas del original) -->
                             <div class="flex items-center justify-between py-3 border-b border-red-100" data-pregunta="condiciones_fisicas">
                                 <label class="text-gray-700 text-base flex-1 mr-4">1. ¿Me encuentro en condiciones físicas y psicológicas para realizar la tarea?</label>
                                 <div class="flex space-x-4">
@@ -171,7 +170,7 @@
                         </div>
                     </div>
 
-                    <!-- Subsección 1.3 -->
+                    <!-- 1.3 -->
                     <div class="p-5 bg-blue-50 rounded-lg border border-blue-200 mb-8" id="subseccion-1-3">
                         <h3 class="text-xl font-semibold text-blue-600 mb-4 border-b border-blue-300 pb-2">1.3) DE LA TAREA: CONTESTE CADA PREGUNTA</h3>
 
@@ -194,7 +193,7 @@
                         </div>
 
                         <div class="py-3" data-pregunta="alcance_actividades">
-                            <label class="text-gray-700 text-base block mb-2">3. ¿El manual, reglamento, ... incluye todas las actividades?</label>
+                            <label class="text-gray-700 text-base block mb-2">3. ¿El manual, reglamento, procedimiento, instructivo u otro incluye todas las actividades (alcance) a desarrollar en terreno?</label>
                             <div class="flex justify-start space-x-4">
                                 <button data-answer="Si" class="answer-btn-1-3 text-white bg-green-500 hover:bg-green-600 font-medium rounded-lg text-sm px-4 py-2">Sí</button>
                                 <button data-answer="No" class="answer-btn-1-3 text-white bg-red-500 hover:bg-red-600 font-medium rounded-lg text-sm px-4 py-2">No</button>
@@ -202,7 +201,7 @@
                         </div>
                     </div>
 
-                    <!-- Subsección 1.4 -->
+                    <!-- 1.4 -->
                     <div class="p-5 bg-teal-50 rounded-lg border border-teal-200" id="subseccion-1-4">
                         <h3 class="text-xl font-semibold text-teal-700 mb-4 border-b border-teal-300 pb-2">1.4) Verificar si aplica una o más Estrategias de Control</h3>
                         <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-7 gap-4" id="estrategias-grid">
@@ -236,16 +235,17 @@
                             </div>
                         </div>
                     </div>
+
                 </section>
 
                 <footer class="mt-10 pt-6 border-t border-gray-300 text-center">
                     <button onclick="showPdfPreview()" id="preview-art-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-extrabold py-3 px-8 rounded-xl shadow-lg">Previsualizar ART (PDF)</button>
-                    <p class="text-sm text-gray-500 mt-4">Previsualice y luego Guarde o Imprima el documento final.</p>
+                    <p class="text-sm text-gray-500 mt-4">Previsualice y luego descargue el documento final en PDF.</p>
                     <button onclick="loadArtHistory()" id="load-history-btn" class="mt-4 bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-5 rounded-lg shadow-md">Ver Historial Local</button>
                 </footer>
             </div>
 
-            <!-- Wizard (móvil) -->
+            <!-- Wizard (mobile) -->
             <div id="wizard" class="hidden">
                 <div id="wizard-container" class="bg-white rounded-lg p-4 shadow">
                     <div id="wizard-steps-indicator" class="mb-4 text-sm text-gray-600"></div>
@@ -266,9 +266,7 @@
 
                     <div class="wizard-step" data-step="1" id="step-1">
                         <h3 class="font-bold mb-2">Paso 2 — Chequeo Trabajadores</h3>
-                        <div id="check-list-1-2-m">
-                            <!-- We'll clone the desktop items visually simpler -->
-                        </div>
+                        <div id="check-list-1-2-m"></div>
                     </div>
 
                     <div class="wizard-step" data-step="2" id="step-2">
@@ -296,8 +294,8 @@
                     </div>
                 </div>
             </div>
-        </div>
 
+        </div>
     </div>
 
     <!-- Signature Modal -->
@@ -319,13 +317,14 @@
     <!-- PDF Preview Modal -->
     <div id="pdf-preview-modal" class="fixed inset-0 bg-gray-600 bg-opacity-75 hidden items-center justify-center p-4 z-40">
         <div class="flex justify-center items-start w-full h-full overflow-auto p-6">
-            <div class="pdf-page" id="pdf-content">
-                <!-- filled by JS -->
-            </div>
+            <!-- The element used for PDF generation -->
+            <div class="pdf-page" id="pdf-content"></div>
         </div>
+
+        <!-- Actions: input for filename + Descargar PDF + Cerrar -->
         <div class="fixed bottom-6 right-6 flex gap-2" id="preview-actions">
-            <button onclick="saveArt()" class="hidden bg-green-600 hover:bg-green-700 text-white font-extrabold py-3 px-6 rounded-lg shadow-lg">✅ Guardar ART Localmente</button>
-            <button onclick="window.print()" class="bg-red-600 hover:bg-red-700 text-white font-extrabold py-3 px-6 rounded-lg shadow-lg">🖨️ Imprimir / Guardar como PDF</button>
+            <input id="pdf-filename-input" type="text" placeholder="Nombre archivo (opcional)" class="px-3 py-2 rounded border">
+            <button id="download-pdf-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-extrabold py-3 px-6 rounded-lg shadow-lg">📥 Descargar PDF</button>
             <button onclick="document.getElementById('pdf-preview-modal').classList.add('hidden')" class="bg-gray-300 hover:bg-gray-400 text-gray-800 py-3 px-6 rounded-lg">Cerrar</button>
         </div>
     </div>
@@ -345,257 +344,255 @@
         </div>
     </div>
 
-    <script>
-        /* ---------- Globals ---------- */
-        let userId = 'LocalUser-' + Math.random().toString(16).slice(2,10);
-        const ART_HISTORY_KEY = 'art_chequeos_history';
-        const ART_DRAFT_KEY = 'art_draft';
+<script>
+/* ---------------- Globals ---------------- */
+let userId = 'LocalUser-' + Math.random().toString(16).slice(2,10);
+const ART_HISTORY_KEY = 'art_chequeos_history';
+const ART_DRAFT_KEY = 'art_draft';
 
-        /* Signature canvas variables */
-        let canvas, ctx, isDrawing=false, lastX=0, lastY=0, signatureDataURL='';
+/* Signature canvas variables */
+let canvas, ctx, isDrawing=false, lastX=0, lastY=0, signatureDataURL='';
 
-        /* Init */
-        function initializeAppLogic() {
-            document.getElementById('user-id').textContent = userId;
-            setupEventListeners();
-            initializeSignatureCanvas();
-            initStrategyBoxes();
-            setupDeviceMode(); // wizard or full form
-            restoreDraftIfAny();
-            window.addEventListener('resize', debounce(handleResize, 250));
-        }
+/* Init */
+function initializeAppLogic() {
+    document.getElementById('user-id').textContent = userId;
+    setupEventListeners();
+    initializeSignatureCanvas();
+    initStrategyBoxes();
+    setupDeviceMode(); // wizard or full form
+    restoreDraftIfAny();
+    window.addEventListener('resize', debounce(handleResize, 250));
+}
 
-        /* ---------------- Signature Canvas ---------------- */
-        function initializeSignatureCanvas(){
-            canvas = document.getElementById('signature-canvas');
-            ctx = canvas.getContext('2d');
-            ctx.strokeStyle = '#000';
-            ctx.lineJoin = 'round';
-            ctx.lineCap = 'round';
-            ctx.lineWidth = 3;
-            // mouse
-            canvas.addEventListener('mousedown', (e)=>startDrawing(e.offsetX,e.offsetY));
-            canvas.addEventListener('mousemove', (e)=>draw(e.offsetX,e.offsetY));
-            canvas.addEventListener('mouseup', stopDrawing);
-            canvas.addEventListener('mouseout', stopDrawing);
-            // touch
-            canvas.addEventListener('touchstart', (e)=>{e.preventDefault(); const rect=canvas.getBoundingClientRect(); const x=e.touches[0].clientX-rect.left; const y=e.touches[0].clientY-rect.top; startDrawing(x,y);});
-            canvas.addEventListener('touchmove', (e)=>{e.preventDefault(); const rect=canvas.getBoundingClientRect(); const x=e.touches[0].clientX-rect.left; const y=e.touches[0].clientY-rect.top; draw(x,y);});
-            canvas.addEventListener('touchend', stopDrawing);
-        }
-        function startDrawing(x,y){ isDrawing=true; [lastX,lastY]=[x,y]; }
-        function draw(x,y){ if(!isDrawing) return; ctx.beginPath(); ctx.moveTo(lastX,lastY); ctx.lineTo(x,y); ctx.stroke(); [lastX,lastY]=[x,y]; }
-        function stopDrawing(){ isDrawing=false; }
+/* ---------------- Signature Canvas ---------------- */
+function initializeSignatureCanvas(){
+    canvas = document.getElementById('signature-canvas');
+    if(!canvas) return;
+    ctx = canvas.getContext('2d');
+    ctx.strokeStyle = '#000';
+    ctx.lineJoin = 'round';
+    ctx.lineCap = 'round';
+    ctx.lineWidth = 3;
+    // mouse
+    canvas.addEventListener('mousedown', (e)=>startDrawing(e.offsetX,e.offsetY));
+    canvas.addEventListener('mousemove', (e)=>draw(e.offsetX,e.offsetY));
+    canvas.addEventListener('mouseup', stopDrawing);
+    canvas.addEventListener('mouseout', stopDrawing);
+    // touch
+    canvas.addEventListener('touchstart', (e)=>{e.preventDefault(); const rect=canvas.getBoundingClientRect(); const x=e.touches[0].clientX-rect.left; const y=e.touches[0].clientY-rect.top; startDrawing(x,y);});
+    canvas.addEventListener('touchmove', (e)=>{e.preventDefault(); const rect=canvas.getBoundingClientRect(); const x=e.touches[0].clientX-rect.left; const y=e.touches[0].clientY-rect.top; draw(x,y);});
+    canvas.addEventListener('touchend', stopDrawing);
+}
+function startDrawing(x,y){ isDrawing=true; [lastX,lastY]=[x,y]; }
+function draw(x,y){ if(!isDrawing) return; ctx.beginPath(); ctx.moveTo(lastX,lastY); ctx.lineTo(x,y); ctx.stroke(); [lastX,lastY]=[x,y]; }
+function stopDrawing(){ isDrawing=false; }
 
-        window.openSignatureModal = function(){
-            document.getElementById('signature-modal').classList.remove('hidden');
-            // redraw existing signature if present
-            if(signatureDataURL) drawSignatureFromDataURL(signatureDataURL);
-            else clearSignatureCanvas();
-        };
+window.openSignatureModal = function(){
+    document.getElementById('signature-modal').classList.remove('hidden');
+    if(signatureDataURL) drawSignatureFromDataURL(signatureDataURL); else clearSignatureCanvas();
+};
+function closeSignatureModal(){ document.getElementById('signature-modal').classList.add('hidden'); }
+window.clearSignatureCanvas = function(){
+    if(!ctx) return;
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+};
+window.saveSignature = function(){
+    const temp = document.createElement('canvas'); temp.width=canvas.width; temp.height=canvas.height; const tctx=temp.getContext('2d'); tctx.fillStyle='#FFFFFF'; tctx.fillRect(0,0,temp.width,temp.height);
+    const blank = temp.toDataURL();
+    const data = canvas.toDataURL('image/png');
+    if(data === blank){ showMessage('Error: La firma no puede estar vacía.','error'); return; }
+    signatureDataURL = data;
+    document.getElementById('firma_base64').value = data;
+    const img = document.getElementById('signature-image'); img.src = data; img.classList.remove('hidden'); document.getElementById('signature-placeholder').classList.add('hidden');
+    const sigBox = document.getElementById('signature-display-box-m');
+    if(sigBox){ sigBox.innerHTML = '<img src="'+data+'" style="max-width:100%; max-height:80px; object-fit:contain"/>'; }
+    closeSignatureModal();
+    showMessage('Firma guardada con éxito.','success');
+    saveDraft();
+};
+function drawSignatureFromDataURL(dataURL){
+    if(!dataURL) return;
+    const img=new Image();
+    img.onload = function(){
+        ctx.fillStyle='#FFFFFF'; ctx.fillRect(0,0,canvas.width,canvas.height);
+        const scale = Math.min(canvas.width/img.width, canvas.height/img.height);
+        const x = (canvas.width/2) - (img.width/2)*scale;
+        const y = (canvas.height/2) - (img.height/2)*scale;
+        ctx.drawImage(img, x, y, img.width*scale, img.height*scale);
+    }
+    img.src = dataURL;
+}
 
-        function closeSignatureModal(){ document.getElementById('signature-modal').classList.add('hidden'); }
+/* ---------------- Form Logic ---------------- */
+function initStrategyBoxes(){
+    document.querySelectorAll('.strategy-checkbox').forEach(cb => toggleStrategyBox(cb));
+}
+window.toggleStrategyBox = function(checkbox){
+    const box = checkbox.closest('.strategy-box');
+    if(checkbox.checked) box.classList.add('selected'); else box.classList.remove('selected');
+    saveDraft();
+}
 
-        window.clearSignatureCanvas = function(){
-            if(!ctx) return;
-            ctx.clearRect(0,0,canvas.width,canvas.height);
-        };
+function setupEventListeners(){
+    document.querySelectorAll('#check-list-1-2 .answer-btn-1-2, #subseccion-1-3 .answer-btn-1-3').forEach(btn => {
+        btn.addEventListener('click', (e)=>{ handleAnswerClick(e.target); });
+    });
+    document.querySelectorAll('#subseccion-1-3 .answer-btn-1-3').forEach(btn => {
+        btn.addEventListener('click', ()=> saveDraft());
+    });
+    document.querySelectorAll('#etapa1-section input, #etapa1-section textarea').forEach(inp => {
+        inp.addEventListener('input', debounce(saveDraft,300));
+    });
+    document.getElementById('wizard-next')?.addEventListener('click', wizardNext);
+    document.getElementById('wizard-prev')?.addEventListener('click', wizardPrev);
+    document.getElementById('wizard-save')?.addEventListener('click', ()=>{ saveDraft(); showMessage('Borrador guardado','success'); });
 
-        window.saveSignature = function(){
-            // ensure not blank by comparing to blank white canvas
-            const temp = document.createElement('canvas'); temp.width=canvas.width; temp.height=canvas.height; const tctx=temp.getContext('2d'); tctx.fillStyle='#FFFFFF'; tctx.fillRect(0,0,temp.width,temp.height);
-            const blank = temp.toDataURL();
-            const data = canvas.toDataURL('image/png');
-            if(data === blank){ showMessage('Error: La firma no puede estar vacía.','error'); return; }
-            signatureDataURL = data;
-            document.getElementById('firma_base64').value = data;
-            const img = document.getElementById('signature-image'); img.src = data; img.classList.remove('hidden'); document.getElementById('signature-placeholder').classList.add('hidden');
-            // also update wizard box if mobile
-            const sigBox = document.getElementById('signature-display-box-m');
-            if(sigBox){ sigBox.innerHTML = '<img src="'+data+'" style="max-width:100%; max-height:80px; object-fit:contain"/>'; }
-            closeSignatureModal();
-            showMessage('Firma guardada con éxito.','success');
-            saveDraft(); // persist draft
-        };
+    // PDF download button
+    document.getElementById('download-pdf-btn')?.addEventListener('click', () => {
+        // disable while generating
+        document.getElementById('download-pdf-btn').disabled = true;
+        document.getElementById('download-pdf-btn').innerText = 'Generando PDF...';
+        downloadPdfAndClose().finally(()=>{
+            document.getElementById('download-pdf-btn').disabled = false;
+            document.getElementById('download-pdf-btn').innerText = '📥 Descargar PDF';
+        });
+    });
+}
 
-        function drawSignatureFromDataURL(dataURL){
-            if(!dataURL) return;
-            const img=new Image();
-            img.onload = function(){
-                ctx.fillStyle='#FFFFFF'; ctx.fillRect(0,0,canvas.width,canvas.height);
-                const scale = Math.min(canvas.width/img.width, canvas.height/img.height);
-                const x = (canvas.width/2) - (img.width/2)*scale;
-                const y = (canvas.height/2) - (img.height/2)*scale;
-                ctx.drawImage(img, x, y, img.width*scale, img.height*scale);
-            }
-            img.src = dataURL;
-        }
+/* Handle answer visuals */
+function handleAnswerClick(targetButton){
+    const selectedAnswer = targetButton.getAttribute('data-answer');
+    const parentDiv = targetButton.closest('div[data-pregunta]');
+    const preguntaKey = parentDiv.getAttribute('data-pregunta');
 
-        /* ---------------- Form Logic ---------------- */
-        function initStrategyBoxes(){
-            document.querySelectorAll('.strategy-checkbox').forEach(cb => toggleStrategyBox(cb));
-        }
-        window.toggleStrategyBox = function(checkbox){
-            const box = checkbox.closest('.strategy-box');
-            if(checkbox.checked) box.classList.add('selected'); else box.classList.remove('selected');
-            saveDraft();
-        }
+    parentDiv.querySelectorAll('button').forEach(btn => {
+        btn.classList.remove('btn-selected');
+        if(btn.getAttribute('data-answer') === 'Si'){ btn.classList.replace('bg-green-700','bg-green-500'); }
+        else { btn.classList.replace('bg-red-700','bg-red-500'); }
+    });
 
-        function setupEventListeners(){
-            // Answer buttons (desktop)
-            document.querySelectorAll('#check-list-1-2 .answer-btn-1-2, #subseccion-1-3 .answer-btn-1-3').forEach(btn => {
-                btn.addEventListener('click', (e)=>{ handleAnswerClick(e.target); });
-            });
-            // Handle documento_regula text toggle
-            document.querySelectorAll('#subseccion-1-3 .answer-btn-1-3').forEach(btn => {
-                btn.addEventListener('click', ()=> saveDraft());
-            });
-            // inputs change -> save draft
-            document.querySelectorAll('#etapa1-section input, #etapa1-section textarea').forEach(inp => {
-                inp.addEventListener('input', debounce(saveDraft,300));
-            });
-            // wizard controls
-            document.getElementById('wizard-next').addEventListener('click', wizardNext);
-            document.getElementById('wizard-prev').addEventListener('click', wizardPrev);
-            document.getElementById('wizard-save').addEventListener('click', ()=>{ saveDraft(); showMessage('Borrador guardado','success'); });
-        }
+    targetButton.classList.add('btn-selected');
+    if(selectedAnswer === 'Si'){ targetButton.classList.replace('bg-green-500','bg-green-700'); }
+    else { targetButton.classList.replace('bg-red-500','bg-red-700'); }
 
-        function handleAnswerClick(targetButton){
-            const selectedAnswer = targetButton.getAttribute('data-answer');
-            const parentDiv = targetButton.closest('div[data-pregunta]');
-            const preguntaKey = parentDiv.getAttribute('data-pregunta');
+    if(preguntaKey === 'documento_regula'){
+        const isSi = selectedAnswer === 'Si';
+        const textarea = document.getElementById('documento_tipo');
+        if(isSi){ textarea.classList.remove('hidden'); }
+        else { textarea.classList.add('hidden'); textarea.value=''; }
+    }
 
-            parentDiv.querySelectorAll('button').forEach(btn => {
-                btn.classList.remove('btn-selected');
-                if(btn.getAttribute('data-answer') === 'Si'){ btn.classList.replace('bg-green-700','bg-green-500'); }
-                else { btn.classList.replace('bg-red-700','bg-red-500'); }
-            });
+    checkNoAnswers();
+    saveDraft();
+}
 
-            targetButton.classList.add('btn-selected');
-            if(selectedAnswer === 'Si'){ targetButton.classList.replace('bg-green-500','bg-green-700'); }
-            else { targetButton.classList.replace('bg-red-500','bg-red-700'); }
+function checkNoAnswers(){
+    let hasNo = false;
+    const list12 = document.getElementById('check-list-1-2');
+    if(list12){
+        list12.querySelectorAll('div[data-pregunta]').forEach(div=>{
+            const noB = div.querySelector('button[data-answer="No"]');
+            if(noB && noB.classList.contains('btn-selected')) hasNo = true;
+        });
+    }
+    const q131Div = document.querySelector('div[data-pregunta="capacitado_prevencion"]');
+    const no131 = q131Div?.querySelector('button[data-answer="No"]');
+    if(no131 && no131.classList.contains('btn-selected')) hasNo = true;
+    const alertEl = document.getElementById('no-iniciar-alert-1-2');
+    if(hasNo) alertEl.classList.remove('hidden'); else alertEl.classList.add('hidden');
+    return hasNo;
+}
 
-            if(preguntaKey === 'documento_regula'){
-                const isSi = selectedAnswer === 'Si';
-                const textarea = document.getElementById('documento_tipo');
-                if(isSi){ textarea.classList.remove('hidden'); }
-                else { textarea.classList.add('hidden'); textarea.value=''; }
-            }
+/* ---------------- Collect data ---------------- */
+function collectFormData(checkFirma = true){
+    const firma = document.getElementById('firma_base64').value;
+    if(checkFirma && !firma){ showMessage('Error: La firma del supervisor es obligatoria para previsualizar/guardar.','error'); return null; }
+    const requiredInputs = ['empresa','supervisor','area','lugar_especifico','fecha','hora_inicio','hora_termino','descripcion'];
+    for(const id of requiredInputs){
+        const val = document.getElementById(id).value || '';
+        if(!val.trim()){ showMessage('Error: El campo '+id.toUpperCase()+' es obligatorio.','error'); return null; }
+    }
 
-            checkNoAnswers();
-            saveDraft();
-        }
+    const antecedentes = {
+        empresa: document.getElementById('empresa').value,
+        supervisor: document.getElementById('supervisor').value,
+        area: document.getElementById('area').value,
+        lugar_especifico: document.getElementById('lugar_especifico').value,
+        fecha: document.getElementById('fecha').value,
+        hora_inicio: document.getElementById('hora_inicio').value,
+        hora_termino: document.getElementById('hora_termino').value,
+        descripcion: document.getElementById('descripcion').value,
+        firma_base64: document.getElementById('firma_base64').value
+    };
 
-        function checkNoAnswers(){
-            let hasNo = false;
-            const list12 = document.getElementById('check-list-1-2');
-            if(list12){
-                list12.querySelectorAll('div[data-pregunta]').forEach(div=>{
-                    const noB = div.querySelector('button[data-answer="No"]');
-                    if(noB && noB.classList.contains('btn-selected')) hasNo = true;
-                });
-            }
-            const q131Div = document.querySelector('div[data-pregunta="capacitado_prevencion"]');
-            const no131 = q131Div?.querySelector('button[data-answer="No"]');
-            if(no131 && no131.classList.contains('btn-selected')) hasNo = true;
-            const alertEl = document.getElementById('no-iniciar-alert-1-2');
-            if(hasNo) alertEl.classList.remove('hidden'); else alertEl.classList.add('hidden');
-            return hasNo;
-        }
+    const chequeo_trabajador = {};
+    for(const div of document.querySelectorAll('#check-list-1-2 > div')){
+        const key = div.getAttribute('data-pregunta');
+        const sel = div.querySelector('.btn-selected');
+        if(!sel){ showMessage(`Error: Debe contestar la pregunta sobre '${key}' (Trabajador).`,'error'); return null; }
+        chequeo_trabajador[key] = sel.getAttribute('data-answer');
+    }
 
-        /* ---------------- Collect data ---------------- */
-        function collectFormData(checkFirma = true){
-            const firma = document.getElementById('firma_base64').value;
-            if(checkFirma && !firma){ showMessage('Error: La firma del supervisor es obligatoria para previsualizar/guardar.','error'); return null; }
-            const requiredInputs = ['empresa','supervisor','area','lugar_especifico','fecha','hora_inicio','hora_termino','descripcion'];
-            for(const id of requiredInputs){
-                const val = document.getElementById(id).value || '';
-                if(!val.trim()){ showMessage('Error: El campo '+id.toUpperCase()+' es obligatorio.','error'); return null; }
-            }
+    const chequeo_tarea = {};
+    for(const div of document.querySelectorAll('#subseccion-1-3 > div')){
+        const key = div.getAttribute('data-pregunta');
+        const sel = div.querySelector('.btn-selected');
+        if(!sel){ showMessage(`Error: Debe contestar la pregunta sobre '${key}' (Tarea).`,'error'); return null; }
+        chequeo_tarea[key] = sel.getAttribute('data-answer');
+    }
+    const docInput = document.getElementById('documento_tipo');
+    chequeo_tarea.documento_tipo = docInput && !docInput.classList.contains('hidden') ? docInput.value.trim() : '';
 
-            const antecedentes = {
-                empresa: document.getElementById('empresa').value,
-                supervisor: document.getElementById('supervisor').value,
-                area: document.getElementById('area').value,
-                lugar_especifico: document.getElementById('lugar_especifico').value,
-                fecha: document.getElementById('fecha').value,
-                hora_inicio: document.getElementById('hora_inicio').value,
-                hora_termino: document.getElementById('hora_termino').value,
-                descripcion: document.getElementById('descripcion').value,
-                firma_base64: firma
-            };
+    const estrategias_control = [];
+    document.querySelectorAll('.strategy-checkbox').forEach(cb => { if(cb.checked) estrategias_control.push(cb.getAttribute('data-strategy-name')); });
 
-            const chequeo_trabajador = {};
-            for(const div of document.querySelectorAll('#check-list-1-2 > div')){
-                const key = div.getAttribute('data-pregunta');
-                const sel = div.querySelector('.btn-selected');
-                if(!sel){ showMessage(`Error: Debe contestar la pregunta sobre '${key}' (Trabajador).`,'error'); return null; }
-                chequeo_trabajador[key] = sel.getAttribute('data-answer');
-            }
+    return {
+        id: crypto.randomUUID(),
+        antecedentes,
+        chequeo: { trabajador: chequeo_trabajador, tarea: chequeo_tarea },
+        estrategias_control,
+        timestamp: new Date().toISOString(),
+        savedBy: userId
+    };
+}
 
-            const chequeo_tarea = {};
-            for(const div of document.querySelectorAll('#subseccion-1-3 > div')){
-                const key = div.getAttribute('data-pregunta');
-                const sel = div.querySelector('.btn-selected');
-                if(!sel){ showMessage(`Error: Debe contestar la pregunta sobre '${key}' (Tarea).`,'error'); return null; }
-                chequeo_tarea[key] = sel.getAttribute('data-answer');
-            }
-            const docInput = document.getElementById('documento_tipo');
-            chequeo_tarea.documento_tipo = docInput && !docInput.classList.contains('hidden') ? docInput.value.trim() : '';
+/* ---------------- PDF HTML generation (fixed A4) ---------------- */
+function generatePdfHtml(artData){
+    const { antecedentes, chequeo, estrategias_control, timestamp } = artData;
+    const logoSvg = `<svg width="72" height="72" viewBox="0 0 72 72" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <circle cx="36" cy="36" r="34" fill="#f3f4f6" stroke="#cbd5e1" stroke-width="2"/>
+        <text x="36" y="40" font-size="9" font-family="Inter, sans-serif" font-weight="700" text-anchor="middle" fill="#374151">TU LOGO</text>
+        <text x="36" y="51" font-size="8" font-family="Inter, sans-serif" text-anchor="middle" fill="#6b7280">AQUÍ</text>
+    </svg>`;
 
-            const estrategias_control = [];
-            document.querySelectorAll('.strategy-checkbox').forEach(cb => { if(cb.checked) estrategias_control.push(cb.getAttribute('data-strategy-name')); });
+    function renderChecklist(data, questions, keys){
+        return keys.map((key,i)=>{
+            const ans = data[key] || 'N/A';
+            const cls = ans === 'Si' ? 'pdf-check-result-si' : (ans==='No' ? 'pdf-check-result-no' : '');
+            return `<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px dashed #eef2f7">
+                <div style="width:75%">${questions[i]}</div><div style="width:25%;text-align:right" class="${cls}">${ans}</div>
+            </div>`;
+        }).join('');
+    }
 
-            return {
-                id: crypto.randomUUID(),
-                antecedentes,
-                chequeo: { trabajador: chequeo_trabajador, tarea: chequeo_tarea },
-                estrategias_control,
-                timestamp: new Date().toISOString(),
-                savedBy: userId
-            };
-        }
+    const workerHtml = renderChecklist(chequeo.trabajador, [
+        "1. ¿Me encuentro en condiciones físicas y psicológicas para realizar la tarea?",
+        "2. ¿Las condiciones del entorno permiten realizar mi trabajo de manera segura?",
+        "3. ¿Verifiqué que las áreas de desplazamiento y trabajo se encuentran en condiciones?",
+        "4. ¿Poseo todos los EPP específicos para la tarea?",
+        "5. ¿Dispongo de equipos y herramientas adecuadas e inspeccionadas?",
+        "6. ¿Sé cómo activar y actuar ante una emergencia?"
+    ], ['condiciones_fisicas','condiciones_entorno','areas_condiciones','epp_especificos','equipos_herramientas','actuar_emergencia']);
 
-        /* ---------------- PDF HTML generation (fixed A4) ---------------- */
-        function generatePdfHtml(artData){
-            const { antecedentes, chequeo, estrategias_control, timestamp } = artData;
-            // SVG logo (circle + text) top-right
-            const logoSvg = `<svg width="72" height="72" viewBox="0 0 72 72" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                <defs><linearGradient id="g" x1="0" x2="1"><stop offset="0" stop-color="#e2e8f0"/><stop offset="1" stop-color="#c7d2fe"/></linearGradient></defs>
-                <circle cx="36" cy="36" r="34" fill="#f3f4f6" stroke="#cbd5e1" stroke-width="2"/>
-                <text x="36" y="40" font-size="9" font-family="Inter, sans-serif" font-weight="700" text-anchor="middle" fill="#374151">TU LOGO</text>
-                <text x="36" y="51" font-size="8" font-family="Inter, sans-serif" text-anchor="middle" fill="#6b7280">AQUÍ</text>
-            </svg>`;
+    const taskHtml = renderChecklist(chequeo.tarea, [
+        "1. ¿Estoy capacitado(a) y conozco las medidas de prevención definidas?",
+        "2. ¿Existe algún documento que regule mi trabajo o tarea?",
+        "3. ¿El documento incluye todas las actividades (alcance)?"
+    ], ['capacitado_prevencion','documento_regula','alcance_actividades']);
 
-            // helper to render checklist
-            function renderChecklist(data, questions, keys){
-                return keys.map((key,i)=>{
-                    const ans = data[key] || 'N/A';
-                    const cls = ans === 'Si' ? 'pdf-check-result-si' : (ans==='No' ? 'pdf-check-result-no' : '');
-                    return `<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px dashed #eef2f7">
-                        <div style="width:75%">${questions[i]}</div><div style="width:25%;text-align:right" class="${cls}">${ans}</div>
-                    </div>`;
-                }).join('');
-            }
+    const estrategiasHtml = estrategias_control.length ? `<ul style="margin:8px 0 0 18px">${estrategias_control.map(e=>`<li>${e}</li>`).join('')}</ul>` : `<p style="color:#6b7280;font-style:italic">No se seleccionaron estrategias de control.</p>`;
 
-            const workerHtml = renderChecklist(chequeo.trabajador, [
-                "1. ¿Me encuentro en condiciones físicas y psicológicas para realizar la tarea?",
-                "2. ¿Las condiciones del entorno permiten realizar mi trabajo de manera segura?",
-                "3. ¿Verifiqué que las áreas de desplazamiento y trabajo se encuentran en condiciones?",
-                "4. ¿Poseo todos los EPP específicos para la tarea?",
-                "5. ¿Dispongo de equipos y herramientas adecuadas e inspeccionadas?",
-                "6. ¿Sé cómo activar y actuar ante una emergencia?"
-            ], ['condiciones_fisicas','condiciones_entorno','areas_condiciones','epp_especificos','equipos_herramientas','actuar_emergencia']);
-
-            const taskHtml = renderChecklist(chequeo.tarea, [
-                "1. ¿Estoy capacitado(a) y conozco las medidas de prevención definidas?",
-                "2. ¿Existe algún documento que regule mi trabajo o tarea?",
-                "3. ¿El documento incluye todas las actividades (alcance)?"
-            ], ['capacitado_prevencion','documento_regula','alcance_actividades']);
-
-            const estrategiasHtml = estrategias_control.length ? `<ul style="margin:8px 0 0 18px">${estrategias_control.map(e=>`<li>${e}</li>`).join('')}</ul>` : `<p style="color:#6b7280;font-style:italic">No se seleccionaron estrategias de control.</p>`;
-
-            const html =
+    const html =
 `<div style="width:100%;">
     <div style="display:flex;justify-content:space-between;align-items:flex-start">
         <div>
@@ -632,360 +629,378 @@
     <h3 class="pdf-section-title" style="border-color:#0d9488;color:#0f766e">1.4) ESTRATEGIAS DE CONTROL APLICADAS</h3>
     <div>${estrategiasHtml}</div>
 </div>`;
+    return html;
+}
 
-            return html;
-        }
+/* ---------------- Show Preview ---------------- */
+window.showPdfPreview = function(){
+    const artData = collectFormData(true);
+    if(!artData) return;
+    // generate html for pdf-content container
+    const pdfHtml = generatePdfHtml(artData);
+    const pdfContainer = document.getElementById('pdf-content');
+    pdfContainer.innerHTML = pdfHtml;
+    // show modal
+    document.getElementById('pdf-preview-modal').classList.remove('hidden');
+    // pre-fill filename input default
+    const defaultName = `ART_${(new Date()).toISOString().slice(0,10)}_${artData.antecedentes.supervisor.replace(/\s+/g,'_').slice(0,30) || 'ART'}.pdf`;
+    document.getElementById('pdf-filename-input').value = defaultName;
+}
 
-        /* ---------------- Show Preview ---------------- */
-        window.showPdfPreview = function(){
-            const artData = collectFormData(true);
-            if(!artData) return;
-            const pdfHtml = generatePdfHtml(artData);
-            const pdfContainer = document.getElementById('pdf-content');
-            pdfContainer.innerHTML = pdfHtml;
-            document.getElementById('pdf-preview-modal').classList.remove('hidden');
-        }
+/* ---------------- Download PDF (html2pdf) ---------------- */
+async function downloadPdfAndClose(){
+    try{
+        // collect latest data again to ensure freshness
+        const artData = collectFormData(true);
+        if(!artData) return;
+        // ensure the preview container contains the latest HTML (if user opened preview from wizard)
+        document.getElementById('pdf-content').innerHTML = generatePdfHtml(artData);
 
-        /* ---------------- Save ART to localStorage ---------------- */
-        window.saveArt = function(){
-            const artData = collectFormData();
-            if(!artData) return;
-            document.getElementById('pdf-preview-modal').classList.add('hidden');
-            try{
-                const historyString = localStorage.getItem(ART_HISTORY_KEY);
-                const history = historyString ? JSON.parse(historyString) : [];
-                history.push(artData);
-                localStorage.setItem(ART_HISTORY_KEY, JSON.stringify(history));
-                showMessage('Chequeo Pre-Tarea guardado localmente con éxito!','success');
-                clearForm();
-            }catch(err){
-                console.error(err);
-                showMessage('Error al guardar: '+err.message,'error');
-            }
-        }
+        // get the element to convert
+        const element = document.getElementById('pdf-content');
 
-        /* ---------------- History ---------------- */
-        window.loadArtHistory = function(){
-            const historyList = document.getElementById('history-list'); historyList.innerHTML='';
-            document.getElementById('no-history-message').classList.add('hidden');
-            try{
-                const historyString = localStorage.getItem(ART_HISTORY_KEY);
-                const arts = historyString ? JSON.parse(historyString) : [];
-                if(arts.length===0){ document.getElementById('no-history-message').classList.remove('hidden'); showMessage('No hay chequeos guardados','info'); document.getElementById('history-modal').classList.remove('hidden'); return; }
-                arts.sort((a,b)=> new Date(b.timestamp)-new Date(a.timestamp));
-                arts.forEach(art=>{
-                    const item=document.createElement('div');
-                    item.className='p-3 border rounded-lg shadow-sm hover:bg-gray-50 flex justify-between items-center';
-                    item.innerHTML = `<div>
-                        <p class="font-semibold text-gray-800">${art.antecedentes.area || 'Sin Área'} (${art.antecedentes.lugar_especifico || 'N/A'})</p>
-                        <p class="text-xs text-gray-500">${art.antecedentes.empresa || 'Sin Empresa'} | ${art.antecedentes.hora_inicio || '00:00'} - ${art.antecedentes.hora_termino || '00:00'}</p>
-                        <p class="text-xs text-gray-400 font-mono mt-1">Guardado: ${new Date(art.timestamp).toLocaleDateString()}</p>
-                    </div>
-                    <div class="flex gap-2">
-                        <button onclick="loadArtToForm('${art.id}')" class="bg-blue-500 hover:bg-blue-600 text-white font-medium py-1 px-3 rounded-lg text-sm">Cargar</button>
-                    </div>`;
-                    historyList.appendChild(item);
-                });
-                document.getElementById('history-modal').classList.remove('hidden');
-            }catch(err){ console.error(err); showMessage('Error al cargar historial: '+err.message,'error'); }
-        }
+        // file name: input or default
+        let filename = String(document.getElementById('pdf-filename-input').value || '').trim();
+        if(!filename) filename = `ART_${(new Date()).toISOString().slice(0,10)}_${artData.antecedentes.supervisor.replace(/\s+/g,'_').slice(0,30) || 'ART'}.pdf`;
+        // ensure .pdf extension
+        if(!filename.toLowerCase().endsWith('.pdf')) filename += '.pdf';
 
-        /* ---------------- Load ART to form ---------------- */
-        window.loadArtToForm = function(docId){
-            document.getElementById('history-modal').classList.add('hidden');
-            try{
-                const historyString = localStorage.getItem(ART_HISTORY_KEY);
-                const arts = historyString ? JSON.parse(historyString) : [];
-                const art = arts.find(a=>a.id===docId);
-                if(!art){ showMessage('Chequeo no encontrado','error'); return; }
-                clearForm();
-                // antecedentes
-                document.getElementById('empresa').value = art.antecedentes.empresa || '';
-                document.getElementById('supervisor').value = art.antecedentes.supervisor || '';
-                document.getElementById('area').value = art.antecedentes.area || '';
-                document.getElementById('lugar_especifico').value = art.antecedentes.lugar_especifico || '';
-                document.getElementById('fecha').value = art.antecedentes.fecha || '';
-                document.getElementById('hora_inicio').value = art.antecedentes.hora_inicio || '';
-                document.getElementById('hora_termino').value = art.antecedentes.hora_termino || '';
-                document.getElementById('descripcion').value = art.antecedentes.descripcion || '';
-                // firma
-                const firmaBase64 = art.antecedentes.firma_base64 || '';
-                if(firmaBase64){ document.getElementById('firma_base64').value = firmaBase64; const img = document.getElementById('signature-image'); img.src=firmaBase64; img.classList.remove('hidden'); document.getElementById('signature-placeholder').classList.add('hidden'); signatureDataURL = firmaBase64; }
-                else signatureDataURL = '';
-                // chequeo trabajador
-                document.querySelectorAll('#check-list-1-2 > div').forEach(div=>{
-                    const key = div.getAttribute('data-pregunta');
-                    const answer = art.chequeo.trabajador[key];
-                    if(answer && answer!=='N/A'){ const btn = div.querySelector(`button[data-answer="${answer}"]`); if(btn) handleAnswerClick(btn); }
-                });
-                // chequeo tarea
-                document.querySelectorAll('#subseccion-1-3 > div').forEach(div=>{
-                    const key = div.getAttribute('data-pregunta');
-                    const answer = art.chequeo.tarea[key];
-                    if(answer && answer!=='N/A'){ const btn = div.querySelector(`button[data-answer="${answer}"]`); if(btn) handleAnswerClick(btn); }
-                });
-                const docInput = document.getElementById('documento_tipo'); docInput.value = art.chequeo.tarea.documento_tipo || '';
-                if(art.chequeo.tarea.documento_regula === 'Si') docInput.classList.remove('hidden'); else docInput.classList.add('hidden');
-                // estrategias
-                document.querySelectorAll('.strategy-checkbox').forEach(cb=>{
-                    const name = cb.getAttribute('data-strategy-name');
-                    const checked = art.estrategias_control.includes(name);
-                    cb.checked = checked; toggleStrategyBox(cb);
-                });
-                checkNoAnswers();
-                showMessage('Chequeo cargado','success');
-            }catch(err){ console.error(err); showMessage('Error al cargar chequeo: '+err.message,'error'); }
-        }
+        // Options for html2pdf
+        const opt = {
+            margin:       0,                // we keep internal padding of .pdf-page as "margins actuales"
+            filename:     filename,
+            image:        { type: 'jpeg', quality: 1 },
+            html2canvas:  {
+                scale: 2,                  // increase resolution
+                useCORS: true,
+                background: '#ffffff',
+                // prevent html2canvas from scrolling entire window
+                scrollY: 0
+            },
+            jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' },
+            pagebreak:    { mode: ['avoid-all', 'css', 'legacy'] }
+        };
 
-        /* ---------------- Clear form ---------------- */
-        function clearForm(){
-            document.getElementById('etapa1-section').querySelectorAll('input[type="text"], input[type="date"], input[type="time"], textarea').forEach(i=>i.value='');
-            document.getElementById('firma_base64').value=''; document.getElementById('signature-image').classList.add('hidden'); document.getElementById('signature-placeholder').classList.remove('hidden'); signatureDataURL='';
-            document.querySelectorAll('#check-list-1-2 button, #subseccion-1-3 button').forEach(btn=>{ btn.classList.remove('btn-selected'); if(btn.getAttribute('data-answer')==='Si') btn.classList.replace('bg-green-700','bg-green-500'); else btn.classList.replace('bg-red-700','bg-red-500'); });
-            document.getElementById('no-iniciar-alert-1-2').classList.add('hidden');
-            const docInput = document.getElementById('documento_tipo'); docInput.classList.add('hidden'); docInput.value='';
-            document.querySelectorAll('.strategy-checkbox').forEach(cb => { cb.checked=false; toggleStrategyBox(cb); });
-            // also remove wizard mobile fields
-            ['empresa_m','supervisor_m','area_m','lugar_especifico_m','fecha_m','hora_inicio_m','hora_termino_m','descripcion_m'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value='';});
-            document.getElementById('signature-display-box-m') && (document.getElementById('signature-display-box-m').innerHTML='Clic aquí para firmar');
-            localStorage.removeItem(ART_DRAFT_KEY);
-        }
+        // Before generating: temporarily hide interactive UI that is outside .pdf-page (multi-check)
+        // (Our actions are outside the element used, so not strictly necessary, but kept to be safe)
+        const previewActions = document.getElementById('preview-actions');
+        previewActions.classList.add('preview-action-hidden');
 
-        /* ---------------- Messages ---------------- */
-        function showMessage(message,type){
-            const container = document.getElementById('custom-message-container');
-            const bg = type==='success' ? 'bg-green-500' : (type==='error' ? 'bg-red-500' : 'bg-blue-500');
-            const html = `<div class="custom-message fixed inset-x-0 top-0 mx-auto mt-4 z-50 flex items-start justify-center p-4 transition-opacity duration-300 opacity-0 pointer-events-none">
-                <div class="${bg} text-white p-3 rounded-lg shadow-xl max-w-sm transform scale-100 pointer-events-auto">${message}</div>
+        // Use a Promise wrapper because html2pdf returns the jsPDF instance synchronously but chainable
+        await html2pdf().set(opt).from(element).save();
+
+        // after download: restore UI and close modal
+        previewActions.classList.remove('preview-action-hidden');
+        document.getElementById('pdf-preview-modal').classList.add('hidden');
+
+        showMessage(`PDF generado: ${filename}`, 'success');
+
+    } catch(err){
+        console.error('Error generando PDF', err);
+        showMessage('Error al generar PDF: ' + (err.message || err), 'error');
+    }
+}
+
+/* ---------------- Save ART to localStorage ---------------- */
+window.saveArt = function(){
+    const artData = collectFormData();
+    if(!artData) return;
+    try{
+        const historyString = localStorage.getItem(ART_HISTORY_KEY);
+        const history = historyString ? JSON.parse(historyString) : [];
+        history.push(artData);
+        localStorage.setItem(ART_HISTORY_KEY, JSON.stringify(history));
+        showMessage('Chequeo Pre-Tarea guardado localmente con éxito!','success');
+        clearForm();
+    }catch(err){
+        console.error(err);
+        showMessage('Error al guardar: '+err.message,'error');
+    }
+}
+
+/* ---------------- History / load ---------------- */
+window.loadArtHistory = function(){ /* same as before (omitted for brevity in comments) */
+    const historyList = document.getElementById('history-list'); historyList.innerHTML='';
+    document.getElementById('no-history-message').classList.add('hidden');
+    try{
+        const historyString = localStorage.getItem(ART_HISTORY_KEY);
+        const arts = historyString ? JSON.parse(historyString) : [];
+        if(arts.length===0){ document.getElementById('no-history-message').classList.remove('hidden'); showMessage('No hay chequeos guardados','info'); document.getElementById('history-modal').classList.remove('hidden'); return; }
+        arts.sort((a,b)=> new Date(b.timestamp)-new Date(a.timestamp));
+        arts.forEach(art=>{
+            const item=document.createElement('div');
+            item.className='p-3 border rounded-lg shadow-sm hover:bg-gray-50 flex justify-between items-center';
+            item.innerHTML = `<div>
+                <p class="font-semibold text-gray-800">${art.antecedentes.area || 'Sin Área'} (${art.antecedentes.lugar_especifico || 'N/A'})</p>
+                <p class="text-xs text-gray-500">${art.antecedentes.empresa || 'Sin Empresa'} | ${art.antecedentes.hora_inicio || '00:00'} - ${art.antecedentes.hora_termino || '00:00'}</p>
+                <p class="text-xs text-gray-400 font-mono mt-1">Guardado: ${new Date(art.timestamp).toLocaleDateString()}</p>
+            </div>
+            <div class="flex gap-2">
+                <button onclick="loadArtToForm('${art.id}')" class="bg-blue-500 hover:bg-blue-600 text-white font-medium py-1 px-3 rounded-lg text-sm">Cargar</button>
             </div>`;
-            container.insertAdjacentHTML('beforeend', html);
-            const el = container.lastElementChild;
-            setTimeout(()=> el.classList.remove('opacity-0'), 10);
-            setTimeout(()=>{ el.classList.add('opacity-0'); setTimeout(()=>el.remove(),300); }, 3000);
-        }
-        window.alert = function(msg){ showMessage(msg,'info'); };
+            historyList.appendChild(item);
+        });
+        document.getElementById('history-modal').classList.remove('hidden');
+    }catch(err){ console.error(err); showMessage('Error al cargar historial: '+err.message,'error'); }
+}
 
-        /* ---------------- Device mode & Wizard ---------------- */
-        let isMobileMode = false;
-        function setupDeviceMode(){
-            isMobileMode = window.innerWidth < 768;
-            applyMode();
-        }
-        function handleResize(){ const wasMobile = isMobileMode; isMobileMode = window.innerWidth < 768; if(wasMobile !== isMobileMode) applyMode(); }
-        function applyMode(){
-            const fullForm = document.getElementById('full-form'); const wizard = document.getElementById('wizard');
-            if(isMobileMode){ fullForm.classList.add('hidden'); wizard.classList.remove('hidden'); prepareWizard(); }
-            else { fullForm.classList.remove('hidden'); wizard.classList.add('hidden'); }
-        }
+window.loadArtToForm = function(docId){
+    document.getElementById('history-modal').classList.add('hidden');
+    try{
+        const historyString = localStorage.getItem(ART_HISTORY_KEY);
+        const arts = historyString ? JSON.parse(historyString) : [];
+        const art = arts.find(a=>a.id===docId);
+        if(!art){ showMessage('Chequeo no encontrado','error'); return; }
+        clearForm();
+        document.getElementById('empresa').value = art.antecedentes.empresa || '';
+        document.getElementById('supervisor').value = art.antecedentes.supervisor || '';
+        document.getElementById('area').value = art.antecedentes.area || '';
+        document.getElementById('lugar_especifico').value = art.antecedentes.lugar_especifico || '';
+        document.getElementById('fecha').value = art.antecedentes.fecha || '';
+        document.getElementById('hora_inicio').value = art.antecedentes.hora_inicio || '';
+        document.getElementById('hora_termino').value = art.antecedentes.hora_termino || '';
+        document.getElementById('descripcion').value = art.antecedentes.descripcion || '';
+        const firmaBase64 = art.antecedentes.firma_base64 || '';
+        if(firmaBase64){ document.getElementById('firma_base64').value = firmaBase64; const img = document.getElementById('signature-image'); img.src=firmaBase64; img.classList.remove('hidden'); document.getElementById('signature-placeholder').classList.add('hidden'); signatureDataURL = firmaBase64; } else signatureDataURL = '';
+        document.querySelectorAll('#check-list-1-2 > div').forEach(div=>{
+            const key = div.getAttribute('data-pregunta');
+            const answer = art.chequeo.trabajador[key];
+            if(answer && answer!=='N/A'){ const btn = div.querySelector(`button[data-answer="${answer}"]`); if(btn) handleAnswerClick(btn); }
+        });
+        document.querySelectorAll('#subseccion-1-3 > div').forEach(div=>{
+            const key = div.getAttribute('data-pregunta');
+            const answer = art.chequeo.tarea[key];
+            if(answer && answer!=='N/A'){ const btn = div.querySelector(`button[data-answer="${answer}"]`); if(btn) handleAnswerClick(btn); }
+        });
+        const docInput = document.getElementById('documento_tipo'); docInput.value = art.chequeo.tarea.documento_tipo || '';
+        if(art.chequeo.tarea.documento_regula === 'Si') docInput.classList.remove('hidden'); else docInput.classList.add('hidden');
+        document.querySelectorAll('.strategy-checkbox').forEach(cb=>{
+            const name = cb.getAttribute('data-strategy-name');
+            const checked = art.estrategias_control.includes(name);
+            cb.checked = checked; toggleStrategyBox(cb);
+        });
+        checkNoAnswers();
+        showMessage('Chequeo cargado','success');
+    }catch(err){ console.error(err); showMessage('Error al cargar chequeo: '+err.message,'error'); }
+}
 
-        /* Wizard implementation */
-        let wizardStep = 0;
-        function prepareWizard(){
-            wizardStep = 0;
-            // populate wizard fields from desktop if present
-            ['empresa','supervisor','area','lugar_especifico','fecha','hora_inicio','hora_termino','descripcion'].forEach(id=>{
-                const desktop = document.getElementById(id); const mobile = document.getElementById(id+'_m');
-                if(desktop && mobile) mobile.value = desktop.value;
-            });
-            // build simple clone of check-lists for mobile
-            buildWizardChecklists();
-            updateWizardUI();
-        }
-        function buildWizardChecklists(){
-            const container = document.getElementById('check-list-1-2-m'); container.innerHTML='';
-            document.querySelectorAll('#check-list-1-2 > div').forEach(div=>{
-                const q = div.querySelector('label').innerText;
-                const key = div.getAttribute('data-pregunta');
-                const item = document.createElement('div'); item.className='mb-3';
-                item.innerHTML = `<div class="mb-1">${q}</div>
-                    <div class="flex gap-2">
-                        <button class="px-3 py-2 rounded bg-green-500 text-white" data-key="${key}" data-answer="Si">Sí</button>
-                        <button class="px-3 py-2 rounded bg-red-500 text-white" data-key="${key}" data-answer="No">No</button>
-                    </div>`;
-                container.appendChild(item);
-            });
-            // events
-            container.querySelectorAll('button').forEach(btn=>{
-                btn.addEventListener('click', (e)=>{
-                    const key = e.target.getAttribute('data-key'); const ans = e.target.getAttribute('data-answer');
-                    // update desktop counterpart visually
-                    const desktopDiv = document.querySelector(`#check-list-1-2 > div[data-pregunta="${key}"]`);
-                    if(desktopDiv){
-                        const desktopBtn = desktopDiv.querySelector(`button[data-answer="${ans}"]`);
-                        if(desktopBtn) handleAnswerClick(desktopBtn);
-                    }
-                    // also mark mobile UI
-                    const parent = e.target.parentElement;
-                    parent.querySelectorAll('button').forEach(b=>b.classList.remove('ring-2','ring-offset-2'));
-                    e.target.classList.add('ring-2','ring-offset-2');
-                    saveDraft();
-                });
-            });
+/* ---------------- Clear form ---------------- */
+function clearForm(){
+    document.getElementById('etapa1-section').querySelectorAll('input[type="text"], input[type="date"], input[type="time"], textarea').forEach(i=>i.value='');
+    document.getElementById('firma_base64').value=''; document.getElementById('signature-image').classList.add('hidden'); document.getElementById('signature-placeholder').classList.remove('hidden'); signatureDataURL='';
+    document.querySelectorAll('#check-list-1-2 button, #subseccion-1-3 button').forEach(btn=>{ btn.classList.remove('btn-selected'); if(btn.getAttribute('data-answer')==='Si') btn.classList.replace('bg-green-700','bg-green-500'); else btn.classList.replace('bg-red-700','bg-red-500'); });
+    document.getElementById('no-iniciar-alert-1-2').classList.add('hidden');
+    const docInput = document.getElementById('documento_tipo'); docInput.classList.add('hidden'); docInput.value='';
+    document.querySelectorAll('.strategy-checkbox').forEach(cb => { cb.checked=false; toggleStrategyBox(cb); });
+    ['empresa_m','supervisor_m','area_m','lugar_especifico_m','fecha_m','hora_inicio_m','hora_termino_m','descripcion_m'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value='';});
+    document.getElementById('signature-display-box-m') && (document.getElementById('signature-display-box-m').innerHTML='Clic aquí para firmar');
+    localStorage.removeItem(ART_DRAFT_KEY);
+}
 
-            // build 1.3 for mobile
-            const tcont = document.getElementById('subseccion-1-3-m'); tcont.innerHTML='';
-            document.querySelectorAll('#subseccion-1-3 > div').forEach(div=>{
-                const q = div.querySelector('label').innerText;
-                const key = div.getAttribute('data-pregunta');
-                const item = document.createElement('div'); item.className='mb-3';
-                item.innerHTML = `<div class="mb-1">${q}</div>
-                    <div class="flex gap-2">
-                        <button class="px-3 py-2 rounded bg-green-500 text-white" data-key="${key}" data-answer="Si">Sí</button>
-                        <button class="px-3 py-2 rounded bg-red-500 text-white" data-key="${key}" data-answer="No">No</button>
-                    </div>`;
-                tcont.appendChild(item);
-            });
-            tcont.querySelectorAll('button').forEach(btn=>{
-                btn.addEventListener('click', (e)=>{
-                    const key = e.target.getAttribute('data-key'); const ans = e.target.getAttribute('data-answer');
-                    const desktopDiv = document.querySelector(`#subseccion-1-3 > div[data-pregunta="${key}"]`);
-                    if(desktopDiv){
-                        const desktopBtn = desktopDiv.querySelector(`button[data-answer="${ans}"]`);
-                        if(desktopBtn) handleAnswerClick(desktopBtn);
-                    }
-                    e.target.parentElement.querySelectorAll('button').forEach(b=>b.classList.remove('ring-2'));
-                    e.target.classList.add('ring-2');
-                    saveDraft();
-                });
-            });
+/* ---------------- Messages ---------------- */
+function showMessage(message,type){
+    const container = document.getElementById('custom-message-container');
+    const bg = type==='success' ? 'bg-green-500' : (type==='error' ? 'bg-red-500' : 'bg-blue-500');
+    const html = `<div class="custom-message fixed inset-x-0 top-0 mx-auto mt-4 z-50 flex items-start justify-center p-4 transition-opacity duration-300 opacity-0 pointer-events-none">
+        <div class="${bg} text-white p-3 rounded-lg shadow-xl max-w-sm transform scale-100 pointer-events-auto">${message}</div>
+    </div>`;
+    container.insertAdjacentHTML('beforeend', html);
+    const el = container.lastElementChild;
+    setTimeout(()=> el.classList.remove('opacity-0'), 10);
+    setTimeout(()=>{ el.classList.add('opacity-0'); setTimeout(()=>el.remove(),300); }, 3000);
+}
+window.alert = function(msg){ showMessage(msg,'info'); };
 
-            // estrategias mobile (clone)
-            const estrCont = document.getElementById('estrategias-grid-m'); estrCont.innerHTML='';
-            document.querySelectorAll('#estrategias-grid .strategy-box').forEach(box=>{
-                const name = box.getAttribute('data-strategy');
-                const cb = box.querySelector('.strategy-checkbox');
-                const item = document.createElement('label'); item.className='p-2 border rounded flex items-center justify-between';
-                item.innerHTML = `<span>${name}</span><input type="checkbox" data-strategy-name="${name}" class="strategy-checkbox-m">`;
-                estrCont.appendChild(item);
-            });
-            // events for mobile checkboxes
-            document.querySelectorAll('.strategy-checkbox-m').forEach(cb=>{
-                cb.addEventListener('change', (e)=>{
-                    // sync to desktop checkbox
-                    const name = e.target.getAttribute('data-strategy-name');
-                    const desktopCb = document.querySelector(`.strategy-checkbox[data-strategy-name="${name}"]`);
-                    if(desktopCb){ desktopCb.checked = e.target.checked; toggleStrategyBox(desktopCb); }
-                    saveDraft();
-                });
+/* ---------------- Device mode & Wizard ---------------- */
+let isMobileMode = false;
+function setupDeviceMode(){
+    isMobileMode = window.innerWidth < 768;
+    applyMode();
+}
+function handleResize(){ const wasMobile = isMobileMode; isMobileMode = window.innerWidth < 768; if(wasMobile !== isMobileMode) applyMode(); }
+function applyMode(){
+    const fullForm = document.getElementById('full-form'); const wizard = document.getElementById('wizard');
+    if(isMobileMode){ fullForm.classList.add('hidden'); wizard.classList.remove('hidden'); prepareWizard(); }
+    else { fullForm.classList.remove('hidden'); wizard.classList.add('hidden'); }
+}
+
+/* Wizard implementation (same as before) */
+let wizardStep = 0;
+function prepareWizard(){
+    wizardStep = 0;
+    ['empresa','supervisor','area','lugar_especifico','fecha','hora_inicio','hora_termino','descripcion'].forEach(id=>{
+        const desktop = document.getElementById(id); const mobile = document.getElementById(id+'_m');
+        if(desktop && mobile) mobile.value = desktop.value;
+    });
+    buildWizardChecklists();
+    updateWizardUI();
+}
+function buildWizardChecklists(){
+    const container = document.getElementById('check-list-1-2-m'); container.innerHTML='';
+    document.querySelectorAll('#check-list-1-2 > div').forEach(div=>{
+        const q = div.querySelector('label').innerText;
+        const key = div.getAttribute('data-pregunta');
+        const item = document.createElement('div'); item.className='mb-3';
+        item.innerHTML = `<div class="mb-1">${q}</div>
+            <div class="flex gap-2">
+                <button class="px-3 py-2 rounded bg-green-500 text-white" data-key="${key}" data-answer="Si">Sí</button>
+                <button class="px-3 py-2 rounded bg-red-500 text-white" data-key="${key}" data-answer="No">No</button>
+            </div>`;
+        container.appendChild(item);
+    });
+    container.querySelectorAll('button').forEach(btn=>{
+        btn.addEventListener('click', (e)=>{
+            const key = e.target.getAttribute('data-key'); const ans = e.target.getAttribute('data-answer');
+            const desktopDiv = document.querySelector(`#check-list-1-2 > div[data-pregunta="${key}"]`);
+            if(desktopDiv){ const desktopBtn = desktopDiv.querySelector(`button[data-answer="${ans}"]`); if(desktopBtn) handleAnswerClick(desktopBtn); }
+            e.target.parentElement.querySelectorAll('button').forEach(b=>b.classList.remove('ring-2','ring-offset-2'));
+            e.target.classList.add('ring-2','ring-offset-2');
+            saveDraft();
+        });
+    });
+
+    const tcont = document.getElementById('subseccion-1-3-m'); tcont.innerHTML='';
+    document.querySelectorAll('#subseccion-1-3 > div').forEach(div=>{
+        const q = div.querySelector('label').innerText;
+        const key = div.getAttribute('data-pregunta');
+        const item = document.createElement('div'); item.className='mb-3';
+        item.innerHTML = `<div class="mb-1">${q}</div>
+            <div class="flex gap-2">
+                <button class="px-3 py-2 rounded bg-green-500 text-white" data-key="${key}" data-answer="Si">Sí</button>
+                <button class="px-3 py-2 rounded bg-red-500 text-white" data-key="${key}" data-answer="No">No</button>
+            </div>`;
+        tcont.appendChild(item);
+    });
+    tcont.querySelectorAll('button').forEach(btn=>{
+        btn.addEventListener('click', (e)=>{
+            const key = e.target.getAttribute('data-key'); const ans = e.target.getAttribute('data-answer');
+            const desktopDiv = document.querySelector(`#subseccion-1-3 > div[data-pregunta="${key}"]`);
+            if(desktopDiv){ const desktopBtn = desktopDiv.querySelector(`button[data-answer="${ans}"]`); if(desktopBtn) handleAnswerClick(desktopBtn); }
+            e.target.parentElement.querySelectorAll('button').forEach(b=>b.classList.remove('ring-2'));
+            e.target.classList.add('ring-2');
+            saveDraft();
+        });
+    });
+
+    const estrCont = document.getElementById('estrategias-grid-m'); estrCont.innerHTML='';
+    document.querySelectorAll('#estrategias-grid .strategy-box').forEach(box=>{
+        const name = box.getAttribute('data-strategy');
+        const item = document.createElement('label'); item.className='p-2 border rounded flex items-center justify-between';
+        item.innerHTML = `<span>${name}</span><input type="checkbox" data-strategy-name="${name}" class="strategy-checkbox-m">`;
+        estrCont.appendChild(item);
+    });
+    document.querySelectorAll('.strategy-checkbox-m').forEach(cb=>{
+        cb.addEventListener('change', (e)=>{
+            const name = e.target.getAttribute('data-strategy-name');
+            const desktopCb = document.querySelector(`.strategy-checkbox[data-strategy-name="${name}"]`);
+            if(desktopCb){ desktopCb.checked = e.target.checked; toggleStrategyBox(desktopCb); }
+            saveDraft();
+        });
+    });
+}
+function updateWizardUI(){
+    document.querySelectorAll('.wizard-step').forEach(el => el.classList.remove('active'));
+    const current = document.querySelector(`.wizard-step[data-step="${wizardStep}"]`);
+    if(current) current.classList.add('active');
+    document.getElementById('wizard-steps-indicator').innerText = `Paso ${wizardStep+1} de ${document.querySelectorAll('.wizard-step').length}`;
+    document.getElementById('wizard-prev').disabled = wizardStep===0;
+    document.getElementById('wizard-next').innerText = wizardStep === (document.querySelectorAll('.wizard-step').length-1) ? 'Previsualizar' : 'Siguiente';
+    syncMobileToDesktop();
+}
+function wizardNext(){
+    if(wizardStep === 0){
+        const entreprise = document.getElementById('empresa_m').value.trim();
+        if(!entreprise){ showMessage('Ingrese Empresa','error'); return; }
+        ['empresa','supervisor','area','lugar_especifico','fecha','hora_inicio','hora_termino','descripcion'].forEach(id=>{
+            const m = document.getElementById(id+'_m'), d = document.getElementById(id);
+            if(m && d) d.value = m.value;
+        });
+    }
+    if(wizardStep < document.querySelectorAll('.wizard-step').length-1){ wizardStep++; updateWizardUI(); }
+    else {
+        saveDraft();
+        const artData = collectFormData(true);
+        if(!artData) return;
+        document.getElementById('pdf-content').innerHTML = generatePdfHtml(artData);
+        document.getElementById('pdf-preview-modal').classList.remove('hidden');
+        const defaultName = `ART_${(new Date()).toISOString().slice(0,10)}_${artData.antecedentes.supervisor.replace(/\s+/g,'_').slice(0,30) || 'ART'}.pdf`;
+        document.getElementById('pdf-filename-input').value = defaultName;
+    }
+}
+function wizardPrev(){ if(wizardStep>0){ wizardStep--; updateWizardUI(); } }
+function syncMobileToDesktop(){ ['empresa','supervisor','area','lugar_especifico','fecha','hora_inicio','hora_termino','descripcion'].forEach(id=>{ const m = document.getElementById(id+'_m'), d = document.getElementById(id); if(m && d) d.value = m.value; }); }
+
+/* ---------------- Draft save/restore ---------------- */
+function saveDraft(){
+    try{
+        const draft = {
+            antecedentes: {
+                empresa: document.getElementById('empresa').value || '',
+                supervisor: document.getElementById('supervisor').value || '',
+                area: document.getElementById('area').value || '',
+                lugar_especifico: document.getElementById('lugar_especifico').value || '',
+                fecha: document.getElementById('fecha').value || '',
+                hora_inicio: document.getElementById('hora_inicio').value || '',
+                hora_termino: document.getElementById('hora_termino').value || '',
+                descripcion: document.getElementById('descripcion').value || '',
+                firma_base64: document.getElementById('firma_base64').value || ''
+            },
+            chequeo: { trabajador: {}, tarea: {} },
+            estrategias: []
+        };
+        document.querySelectorAll('#check-list-1-2 > div').forEach(div=>{
+            const key = div.getAttribute('data-pregunta'); const sel = div.querySelector('.btn-selected');
+            draft.chequeo.trabajador[key] = sel ? sel.getAttribute('data-answer') : '';
+        });
+        document.querySelectorAll('#subseccion-1-3 > div').forEach(div=>{
+            const key = div.getAttribute('data-pregunta'); const sel = div.querySelector('.btn-selected');
+            draft.chequeo.tarea[key] = sel ? sel.getAttribute('data-answer') : '';
+        });
+        document.querySelectorAll('.strategy-checkbox').forEach(cb=>{ if(cb.checked) draft.estrategias.push(cb.getAttribute('data-strategy-name')); });
+        localStorage.setItem(ART_DRAFT_KEY, JSON.stringify(draft));
+    }catch(e){ console.error('saveDraft',e); }
+}
+function restoreDraftIfAny(){
+    try{
+        const s = localStorage.getItem(ART_DRAFT_KEY); if(!s) return;
+        const draft = JSON.parse(s);
+        if(draft.antecedentes){
+            Object.entries(draft.antecedentes).forEach(([k,v])=>{
+                const el = document.getElementById(k); if(el) el.value = v;
+                const el_m = document.getElementById(k+'_m'); if(el_m) el_m.value = v;
             });
         }
-        function updateWizardUI(){
-            document.querySelectorAll('.wizard-step').forEach(el => el.classList.remove('active'));
-            const current = document.querySelector(`.wizard-step[data-step="${wizardStep}"]`);
-            if(current) current.classList.add('active');
-            // indicator
-            document.getElementById('wizard-steps-indicator').innerText = `Paso ${wizardStep+1} de ${document.querySelectorAll('.wizard-step').length}`;
-            // prev/next button visibility
-            document.getElementById('wizard-prev').disabled = wizardStep===0;
-            document.getElementById('wizard-next').innerText = wizardStep === (document.querySelectorAll('.wizard-step').length-1) ? 'Previsualizar' : 'Siguiente';
-            // sync mobile fields to desktop occasionally
-            syncMobileToDesktop();
-        }
-        function wizardNext(){
-            if(wizardStep === 0){
-                // validate antec
-                const entreprise = document.getElementById('empresa_m').value.trim();
-                if(!entreprise){ showMessage('Ingrese Empresa','error'); return; }
-                // copy mobile to desktop
-                ['empresa','supervisor','area','lugar_especifico','fecha','hora_inicio','hora_termino','descripcion'].forEach(id=>{
-                    const m = document.getElementById(id+'_m'), d = document.getElementById(id);
-                    if(m && d) d.value = m.value;
-                });
+        if(draft.chequeo){
+            for(const [k,v] of Object.entries(draft.chequeo.trabajador || {})){
+                const desktopDiv = document.querySelector(`#check-list-1-2 > div[data-pregunta="${k}"]`);
+                if(desktopDiv && v){ const btn = desktopDiv.querySelector(`button[data-answer="${v}"]`); if(btn) handleAnswerClick(btn); }
             }
-            if(wizardStep < document.querySelectorAll('.wizard-step').length-1){ wizardStep++; updateWizardUI(); }
-            else {
-                // last step => attempt preview
-                saveDraft(); // persist before preview
-                const artData = collectFormData(true);
-                if(!artData) return;
-                const pdfHtml = generatePdfHtml(artData);
-                document.getElementById('pdf-content').innerHTML = pdfHtml;
-                document.getElementById('pdf-preview-modal').classList.remove('hidden');
+            for(const [k,v] of Object.entries(draft.chequeo.tarea || {})){
+                const desktopDiv = document.querySelector(`#subseccion-1-3 > div[data-pregunta="${k}"]`);
+                if(desktopDiv && v){ const btn = desktopDiv.querySelector(`button[data-answer="${v}"]`); if(btn) handleAnswerClick(btn); }
             }
         }
-        function wizardPrev(){ if(wizardStep>0){ wizardStep--; updateWizardUI(); } }
-        function syncMobileToDesktop(){
-            ['empresa','supervisor','area','lugar_especifico','fecha','hora_inicio','hora_termino','descripcion'].forEach(id=>{
-                const m = document.getElementById(id+'_m'), d = document.getElementById(id);
-                if(m && d) d.value = m.value;
+        if(draft.antecedentes && draft.antecedentes.firma_base64){
+            const fb = draft.antecedentes.firma_base64;
+            document.getElementById('firma_base64').value = fb;
+            const img = document.getElementById('signature-image'); img.src = fb; img.classList.remove('hidden'); document.getElementById('signature-placeholder').classList.add('hidden');
+            signatureDataURL = fb;
+        }
+        if(draft.estrategias) {
+            document.querySelectorAll('.strategy-checkbox').forEach(cb=>{
+                cb.checked = draft.estrategias.includes(cb.getAttribute('data-strategy-name'));
+                toggleStrategyBox(cb);
             });
         }
+    }catch(e){ console.error('restoreDraft',e); }
+}
 
-        /* ---------------- Draft save/restore ---------------- */
-        function saveDraft(){
-            try{
-                const draft = {
-                    antecedentes: {
-                        empresa: document.getElementById('empresa').value || '',
-                        supervisor: document.getElementById('supervisor').value || '',
-                        area: document.getElementById('area').value || '',
-                        lugar_especifico: document.getElementById('lugar_especifico').value || '',
-                        fecha: document.getElementById('fecha').value || '',
-                        hora_inicio: document.getElementById('hora_inicio').value || '',
-                        hora_termino: document.getElementById('hora_termino').value || '',
-                        descripcion: document.getElementById('descripcion').value || '',
-                        firma_base64: document.getElementById('firma_base64').value || ''
-                    },
-                    chequeo: {
-                        trabajador: {},
-                        tarea: {}
-                    },
-                    estrategias: []
-                };
-                document.querySelectorAll('#check-list-1-2 > div').forEach(div=>{
-                    const key = div.getAttribute('data-pregunta'); const sel = div.querySelector('.btn-selected');
-                    draft.chequeo.trabajador[key] = sel ? sel.getAttribute('data-answer') : '';
-                });
-                document.querySelectorAll('#subseccion-1-3 > div').forEach(div=>{
-                    const key = div.getAttribute('data-pregunta'); const sel = div.querySelector('.btn-selected');
-                    draft.chequeo.tarea[key] = sel ? sel.getAttribute('data-answer') : '';
-                });
-                document.querySelectorAll('.strategy-checkbox').forEach(cb=>{ if(cb.checked) draft.estrategias.push(cb.getAttribute('data-strategy-name')); });
-                localStorage.setItem(ART_DRAFT_KEY, JSON.stringify(draft));
-            }catch(e){ console.error('saveDraft',e); }
-        }
-        function restoreDraftIfAny(){
-            try{
-                const s = localStorage.getItem(ART_DRAFT_KEY); if(!s) return;
-                const draft = JSON.parse(s);
-                if(draft.antecedentes){
-                    Object.entries(draft.antecedentes).forEach(([k,v])=>{
-                        const el = document.getElementById(k); if(el) el.value = v;
-                        const el_m = document.getElementById(k+'_m'); if(el_m) el_m.value = v;
-                    });
-                }
-                if(draft.chequeo){
-                    for(const [k,v] of Object.entries(draft.chequeo.trabajador || {})){
-                        const desktopDiv = document.querySelector(`#check-list-1-2 > div[data-pregunta="${k}"]`);
-                        if(desktopDiv && v){ const btn = desktopDiv.querySelector(`button[data-answer="${v}"]`); if(btn) handleAnswerClick(btn); }
-                    }
-                    for(const [k,v] of Object.entries(draft.chequeo.tarea || {})){
-                        const desktopDiv = document.querySelector(`#subseccion-1-3 > div[data-pregunta="${k}"]`);
-                        if(desktopDiv && v){ const btn = desktopDiv.querySelector(`button[data-answer="${v}"]`); if(btn) handleAnswerClick(btn); }
-                    }
-                }
-                if(draft.antecedentes && draft.antecedentes.firma_base64){
-                    const fb = draft.antecedentes.firma_base64;
-                    document.getElementById('firma_base64').value = fb;
-                    const img = document.getElementById('signature-image'); img.src = fb; img.classList.remove('hidden'); document.getElementById('signature-placeholder').classList.add('hidden');
-                    signatureDataURL = fb;
-                }
-                if(draft.estrategias) {
-                    document.querySelectorAll('.strategy-checkbox').forEach(cb=>{
-                        cb.checked = draft.estrategias.includes(cb.getAttribute('data-strategy-name'));
-                        toggleStrategyBox(cb);
-                    });
-                }
-            }catch(e){ console.error('restoreDraft',e); }
-        }
+/* ---------------- Utilities ---------------- */
+function debounce(fn, wait){ let t; return function(...args){ clearTimeout(t); t=setTimeout(()=>fn.apply(this,args), wait); }; }
+function handleResize(){ setupDeviceMode(); }
 
-        /* ---------------- Utilities ---------------- */
-        function debounce(fn, wait){ let t; return function(...args){ clearTimeout(t); t=setTimeout(()=>fn.apply(this,args), wait); }; }
-        // small debounce wrapper for handles
-        function handleResize(){ setupDeviceMode(); }
-
-        /* ---------------- Initialize ---------------- */
-        initializeAppLogic();
-    </script>
+/* ---------------- Start ---------------- */
+initializeAppLogic();
+</script>
 </body>
 </html>
