@@ -19,7 +19,7 @@
     <style>
         :root { --bg:#f7f7f9; --accent-red:#ef4444; --accent-blue:#0f4b8f; --accent-teal:#0d9488; }
         body { font-family: 'Inter', sans-serif; background: var(--bg); color:#111827; -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale; }
-        .pdf-page { width:794px; min-height:1123px; background:#fff; margin:0 auto; padding:32px; box-sizing:border-box; /* border removed for PDF generation */ color:#1f2937; font-size:13px; }
+        .pdf-page { width:794px; min-height:1123px; background:#fff; margin:0 auto; padding:32px; box-sizing:border-box; color:#1f2937; font-size:13px; }
         .pdf-header{ display:flex; justify-content:space-between; align-items:flex-start; gap:20px; }
         .pdf-title{ color:#b91c1c; font-weight:700; font-size:18px; }
         .pdf-subtitle{ font-size:11px; color:#6b7280; margin-top:6px; }
@@ -42,19 +42,25 @@
 
         .preview-action-hidden{ display:none !important; }
 
-        /* Signature fullscreen modal tweaks */
         .signature-fullscreen .signature-modal-inner { width:100%; height:100%; display:flex; flex-direction:column; gap:10px; align-items:center; justify-content:center; }
         .signature-fullscreen canvas { border-radius:12px; box-shadow:0 10px 30px rgba(0,0,0,0.25); }
 
-        /* wizard buttons spacing */
         .wizard-controls { display:flex; justify-content:space-between; gap:12px; align-items:center; }
         .wizard-actions-bottom { display:flex; justify-content:center; margin-top:10px; }
         .small-tertiary { font-size:.85rem; padding:.45rem .75rem; }
 
+        /* more breathing room for time inputs */
+        .time-grid { display:grid; grid-template-columns:1fr 1fr; gap:1.5rem; }
+
         @media (max-width: 767px){
             .pdf-page{ width: 100%; min-height: auto; padding:20px; box-shadow:none; border:0; }
             .signature-fullscreen canvas { width: calc(100vw - 40px) !important; height: calc(55vh) !important; }
+            /* mobile big download button */
+            #mobile-download-btn{ display:block; }
         }
+
+        /* hide mobile download by default on desktop */
+        #mobile-download-btn{ display:none; }
     </style>
 </head>
 <body class="p-4 sm:p-8">
@@ -83,7 +89,7 @@
                         <input type="text" id="area" placeholder="ÁREA DE TRABAJO" class="p-3 border rounded-lg focus:ring-red-500 focus:border-red-500 col-span-1 uppercase">
                         <input type="text" id="lugar_especifico" placeholder="LUGAR ESPECÍFICO" class="p-3 border rounded-lg focus:ring-red-500 focus:border-red-500 col-span-1 uppercase">
 
-                        <!-- Fecha/Hora con títulos visibles -->
+                        <!-- Fecha/Hora con títulos visibles and more spacing -->
                         <div>
                             <label for="fecha" class="block text-sm font-semibold text-gray-600 mb-1">FECHA</label>
                             <input type="date" id="fecha" class="p-3 border rounded-lg focus:ring-red-500 focus:border-red-500 w-full">
@@ -91,7 +97,7 @@
 
                         <div>
                             <label class="block text-sm font-semibold text-gray-600 mb-1">HORARIO</label>
-                            <div class="grid grid-cols-2 gap-4">
+                            <div class="time-grid">
                                 <div>
                                     <label for="hora_inicio" class="text-xs text-gray-500">Hora Inicio</label>
                                     <input type="time" id="hora_inicio" class="p-3 border rounded-lg focus:ring-red-500 focus:border-red-500 w-full">
@@ -186,9 +192,10 @@
                     <div class="py-3 border-b border-blue-100" data-pregunta="documento_regula">
                         <label class="text-gray-700 text-base block mb-2">2. ¿Existe algún documento que regule mi trabajo o tarea?</label>
                         <div class="flex justify-start space-x-4">
-                            <button data-answer="Si" class="answer-btn-1-3 text-white bg-green-500 hover:bg-green-600 font-medium rounded-lg text-sm px-4 py-2">Sí</button>
-                            <button data-answer="No" class="answer-btn-1-3 text-white bg-red-500 hover:bg-red-600 font-medium rounded-lg text-sm px-4 py-2">No</button>
+                            <button data-answer="Si" class="answer-btn-1-3 doc-reg text-white bg-green-500 hover:bg-green-600 font-medium rounded-lg text-sm px-4 py-2">Sí</button>
+                            <button data-answer="No" class="answer-btn-1-3 doc-reg text-white bg-red-500 hover:bg-red-600 font-medium rounded-lg text-sm px-4 py-2">No</button>
                         </div>
+                        <!-- recuadro que aparece si responde "Si" -->
                         <textarea id="documento_tipo" placeholder="Indique cuál: Manual, procedimiento, instructivo, etc." rows="1" class="hidden mt-2 w-full p-2 border rounded-lg focus:ring-blue-500 focus:border-blue-500 text-sm"></textarea>
                     </div>
 
@@ -298,7 +305,6 @@
                     <button id="wizard-next" class="bg-blue-600 text-white px-4 py-2 rounded">Siguiente</button>
                 </div>
 
-                <!-- Save draft intentionally removed (button removed since it did nothing) -->
             </div>
         </div>
 
@@ -327,7 +333,6 @@
 <div id="pdf-preview-modal" class="fixed inset-0 bg-gray-600 bg-opacity-75 hidden items-center justify-center p-4 z-40">
     <div class="flex justify-center items-start w-full h-full overflow-auto p-6">
         <div id="pdf-content-container" class="w-full max-w-3xl">
-            <!-- content injected here: either HTML for desktop preview or an <img> for mobile preview -->
             <div class="pdf-page" id="pdf-content"></div>
         </div>
     </div>
@@ -336,6 +341,11 @@
         <input id="pdf-filename-input" type="text" placeholder="Nombre archivo (opcional)" class="px-3 py-2 rounded border">
         <button id="download-pdf-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-extrabold py-3 px-6 rounded-lg shadow-lg">📥 Descargar PDF</button>
         <button onclick="document.getElementById('pdf-preview-modal').classList.add('hidden')" class="bg-gray-300 hover:bg-gray-400 text-gray-800 py-3 px-6 rounded-lg">Cerrar</button>
+    </div>
+
+    <!-- Mobile big download button (visible only on mobile) -->
+    <div id="mobile-download-area" class="fixed bottom-6 left-0 right-0 flex justify-center pointer-events-none">
+        <button id="mobile-download-btn" class="pointer-events-auto bg-green-600 text-white font-bold py-3 px-8 rounded-full shadow-xl">📥 Descargar PDF</button>
     </div>
 </div>
 
@@ -386,7 +396,7 @@ function initializeSignatureCanvas(){
     ctx.strokeStyle = '#000';
     ctx.lineJoin = 'round';
     ctx.lineCap = 'round';
-    ctx.lineWidth = 3;
+    ctx.lineWidth = Math.max(2, Math.round((canvas.width/900)*3));
 
     // pointer events unified to support touch and mouse
     canvas.addEventListener('pointerdown', (e)=>{ e.preventDefault(); const rect=canvas.getBoundingClientRect(); isDrawing=true; lastX = (e.clientX - rect.left); lastY = (e.clientY - rect.top); });
@@ -402,7 +412,6 @@ function clearSignatureCanvas(){
     ctx.clearRect(0,0,canvas.width,canvas.height);
 }
 function openSignatureModal(){
-    // If mobile: make modal fullscreen-looking and enlarge canvas to landscape-ish
     const modal = document.getElementById('signature-modal');
     modal.classList.remove('hidden');
 
@@ -410,16 +419,15 @@ function openSignatureModal(){
     const isMobile = window.innerWidth < 768;
     const c = document.getElementById('signature-canvas');
     if(isMobile){
-        // target a wide canvas that fits the viewport in landscape-ish ratio
+        // wide canvas that fits viewport in landscape-ish ratio
         const w = Math.max(window.innerWidth, window.innerHeight) - 40;
-        const h = Math.min(window.innerHeight, Math.floor(window.innerWidth * 0.55));
-        c.width = Math.max(800, Math.floor(w));
+        const h = Math.floor(window.innerHeight * 0.55);
+        c.width = Math.max(900, Math.floor(w));
         c.height = Math.max(240, Math.floor(h));
         c.style.width = '100%';
         c.style.height = 'auto';
         document.getElementById('signature-instruction').innerText = 'Gira el dispositivo a horizontal para firmar con mayor comodidad.';
     } else {
-        // desktop: keep default reasonable size
         c.width = 900;
         c.height = 300;
         c.style.width = '100%';
@@ -435,19 +443,15 @@ function closeSignatureModal(){ document.getElementById('signature-modal').class
 function saveSignature(){
     if(!canvas) return;
     const temp = document.createElement('canvas'); temp.width = canvas.width; temp.height = canvas.height;
-    const tctx=temp.getContext('2d');
-    tctx.fillStyle='#FFFFFF'; tctx.fillRect(0,0,temp.width,temp.height);
+    const tctx=temp.getContext('2d'); tctx.fillStyle='#FFFFFF'; tctx.fillRect(0,0,temp.width,temp.height);
     tctx.drawImage(canvas,0,0);
     const data = temp.toDataURL('image/png');
-    // check blank
-    const blank = (function(){
-        const b = document.createElement('canvas'); b.width=temp.width; b.height=temp.height; return b.toDataURL();
-    })();
+    // check blank by comparing to a blank canvas
+    const blank = (function(){ const b = document.createElement('canvas'); b.width=temp.width; b.height=temp.height; return b.toDataURL(); })();
     if(data === blank){ showMessage('Error: La firma no puede estar vacía.','error'); return; }
     signatureDataURL = data;
     document.getElementById('firma_base64').value = data;
     const img = document.getElementById('signature-image'); img.src = data; img.classList.remove('hidden'); document.getElementById('signature-placeholder').classList.add('hidden');
-    // mobile display
     const sigBox = document.getElementById('signature-display-box-m');
     if(sigBox){ sigBox.innerHTML = '<img src="'+data+'" style="max-width:100%; max-height:80px; object-fit:contain"/>'; }
     closeSignatureModal();
@@ -477,9 +481,7 @@ function setupEventListeners(){
     });
     document.getElementById('wizard-next')?.addEventListener('click', wizardNext);
     document.getElementById('wizard-prev')?.addEventListener('click', wizardPrev);
-    // NOTE: Save draft button removed from UI so no listener here
 
-    // Preview & PDF
     document.getElementById('download-pdf-btn')?.addEventListener('click', () => {
         document.getElementById('download-pdf-btn').disabled = true;
         document.getElementById('download-pdf-btn').innerText = 'Generando PDF...';
@@ -489,8 +491,16 @@ function setupEventListeners(){
         });
     });
 
+    document.getElementById('mobile-download-btn')?.addEventListener('click', () => {
+        document.getElementById('mobile-download-btn').disabled = true;
+        document.getElementById('mobile-download-btn').innerText = 'Generando PDF...';
+        downloadPdfAndClose().finally(()=>{
+            document.getElementById('mobile-download-btn').disabled = false;
+            document.getElementById('mobile-download-btn').innerText = '📥 Descargar PDF';
+        });
+    });
+
     document.getElementById('preview-art-btn')?.addEventListener('click', ()=> {
-        // open preview respecting mobile mode
         if(isMobileMode){
             mobileImagePreviewFlow();
         } else {
@@ -517,10 +527,11 @@ function handleAnswerClick(targetButton){
     if(selectedAnswer === 'Si'){ targetButton.classList.replace('bg-green-500','bg-green-700'); }
     else { targetButton.classList.replace('bg-red-500','bg-red-700'); }
 
+    // show/hide recuadro for documento_regula
     if(preguntaKey === 'documento_regula'){
         const isSi = selectedAnswer === 'Si';
         const textarea = document.getElementById('documento_tipo');
-        if(isSi){ textarea.classList.remove('hidden'); }
+        if(isSi){ textarea.classList.remove('hidden'); textarea.focus(); }
         else { textarea.classList.add('hidden'); textarea.value=''; }
     }
 
@@ -554,6 +565,10 @@ function collectFormData(checkFirma = true){
         const val = document.getElementById(id).value || '';
         if(!val.trim()){ showMessage('Error: El campo '+id.toUpperCase()+' es obligatorio.','error'); return null; }
     }
+
+    // if any NO selected in 1.2 or 1.3 capacitado_prevencion -> block
+    const hasNo = checkNoAnswers();
+    if(hasNo){ showMessage('No puede continuar: hay respuestas "No" que requieren atención.','error'); return null; }
 
     const antecedentes = {
         empresa: document.getElementById('empresa').value,
@@ -610,9 +625,8 @@ function generatePdfHtml(artData){
     function renderChecklist(data, questions, keys){
         return keys.map((key,i)=>{
             const ans = data[key] || 'N/A';
-            const cls = ans === 'Si' ? 'pdf-check-result-si' : (ans==='No' ? 'pdf-check-result-no' : '');
             return `<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px dashed #eef2f7">
-                <div style="width:75%">${questions[i]}</div><div style="width:25%;text-align:right" class="${cls}">${ans}</div>
+                <div style="width:75%">${questions[i]}</div><div style="width:25%;text-align:right">${ans}</div>
             </div>`;
         }).join('');
     }
@@ -688,11 +702,9 @@ window.showPdfPreview = function(){
 
 /* ---------------- Mobile preview: render PDF-HTML to image and show ---------------- */
 async function mobileImagePreviewFlow(){
-    // collect data
     const artData = collectFormData(true);
     if(!artData) return;
 
-    // create off-DOM container with the PDF HTML sized to A4 px
     const tempContainer = document.createElement('div');
     tempContainer.style.width = '794px';
     tempContainer.style.minHeight = '1123px';
@@ -703,22 +715,18 @@ async function mobileImagePreviewFlow(){
     tempContainer.style.margin = '0 auto';
     tempContainer.innerHTML = generatePdfHtml(artData);
 
-    // attach off-screen (not visible) but in DOM so html2canvas can read fonts/images
     tempContainer.style.position = 'fixed';
     tempContainer.style.left = '-9999px';
     document.body.appendChild(tempContainer);
 
     try {
-        // render to canvas at scale 2 for quality
         const canvasImg = await html2canvas(tempContainer, { scale: 2, useCORS: true, backgroundColor: '#ffffff', scrollY: -window.scrollY });
         const dataUrl = canvasImg.toDataURL('image/png');
 
-        // show in preview modal as image
         const pdfContent = document.getElementById('pdf-content');
         pdfContent.innerHTML = `<img src="${dataUrl}" alt="Preview PDF" style="width:100%; height:auto; display:block;"/>`;
         document.getElementById('pdf-preview-modal').classList.remove('hidden');
 
-        // set default filename
         const defaultName = `ART_${(new Date()).toISOString().slice(0,10)}_${artData.antecedentes.supervisor.replace(/\s+/g,'_').slice(0,30) || 'ART'}.pdf`;
         document.getElementById('pdf-filename-input').value = defaultName;
 
@@ -726,7 +734,6 @@ async function mobileImagePreviewFlow(){
         console.error('Error generando preview-imagen', err);
         showMessage('Error generando preview en imagen: ' + (err.message || err), 'error');
     } finally {
-        // remove temp
         document.body.removeChild(tempContainer);
     }
 }
@@ -737,22 +744,18 @@ async function downloadPdfAndClose(){
         const artData = collectFormData(true);
         if(!artData) return;
 
-        // ensure content up to date
         const element = document.createElement('div');
         element.innerHTML = generatePdfHtml(artData);
-        // style to match pdf-page
         element.style.width = '794px';
         element.style.minHeight = '1123px';
         element.style.boxSizing = 'border-box';
         element.style.padding = '0';
         element.style.background = '#ffffff';
 
-        // attach off-screen so html2pdf can render it
         element.style.position = 'fixed';
         element.style.left = '-9999px';
         document.body.appendChild(element);
 
-        // filename
         let filename = String(document.getElementById('pdf-filename-input').value || '').trim();
         if(!filename) filename = `ART_${(new Date()).toISOString().slice(0,10)}_${artData.antecedentes.supervisor.replace(/\s+/g,'_').slice(0,30) || 'ART'}.pdf`;
         if(!filename.toLowerCase().endsWith('.pdf')) filename += '.pdf';
@@ -766,10 +769,8 @@ async function downloadPdfAndClose(){
             pagebreak: { mode:['avoid-all','css','legacy'] }
         };
 
-        // generate PDF
         await html2pdf().set(opt).from(element).save();
 
-        // cleanup
         document.body.removeChild(element);
         document.getElementById('pdf-preview-modal').classList.add('hidden');
         showMessage(`PDF generado: ${filename}`, 'success');
@@ -990,6 +991,18 @@ function updateWizardUI(){
     document.getElementById('wizard-next').innerText = wizardStep === (document.querySelectorAll('.wizard-step').length-1) ? 'Previsualizar' : 'Siguiente';
 }
 function wizardNext(){
+    // validation: ensure current step's required answers are present and no 'No' selected
+    const currentStepEl = document.querySelector(`.wizard-step[data-step="${wizardStep}"]`);
+    if(currentStepEl){
+        // if step contains question buttons, make sure each has a selected answer
+        const questionDivs = currentStepEl.querySelectorAll('div[data-pregunta]');
+        for(const q of questionDivs){
+            const sel = q.querySelector('.btn-selected');
+            if(!sel){ showMessage('Debe responder todas las preguntas antes de continuar.','error'); return; }
+            if(sel.getAttribute('data-answer') === 'No'){ showMessage('No puede continuar: hay respuestas "No" que requieren atención.','error'); return; }
+        }
+    }
+
     if(wizardStep === 0){
         const entreprise = document.getElementById('empresa_m').value.trim();
         if(!entreprise){ showMessage('Ingrese Empresa','error'); return; }
@@ -1000,7 +1013,6 @@ function wizardNext(){
     }
     if(wizardStep < document.querySelectorAll('.wizard-step').length-1){ wizardStep++; updateWizardUI(); }
     else {
-        // last: show preview as image (mobile)
         saveDraft();
         mobileImagePreviewFlow();
     }
