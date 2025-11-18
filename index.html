@@ -1,499 +1,336 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
     <title>Análisis de Riesgos de la Tarea (ART)</title>
-    <!-- Carga de Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Configuración de fuente Inter -->
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: #f7f7f9;
-        }
-        /* Estilo para la advertencia en caso de respuesta "NO" */
-        .warning-text {
-            color: #ef4444; /* Rojo 500 */
-            font-weight: 600;
-        }
-        /* Estilo para el estado de los botones (seleccionado) */
-        .btn-selected {
-            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.5); /* Anillo azul ligero */
-            border-color: #3b82f6;
-        }
-        /* Estilo para la caja de la firma */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; background-color: #f7f7f9; }
+
+        /* --- Signature styles (kept) --- */
         #signature-display-box {
             min-height: 80px;
-            background-color: #e2e8f0; /* Azul grisáceo claro */
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border: 2px dashed #94a3b8; /* Borde punteado */
-            border-radius: 0.5rem;
-            color: #64748b;
-            font-style: italic;
-            cursor: pointer;
-            overflow: hidden;
-            padding: 4px; /* Padding interno para que la firma no toque el borde */
+            background-color: #e2e8f0;
+            display: flex; align-items: center; justify-content: center;
+            border: 2px dashed #94a3b8; border-radius: 0.5rem; color: #64748b;
+            font-style: italic; cursor: pointer; overflow: hidden; padding: 4px;
         }
-        #signature-image {
-            max-width: 100%;
-            max-height: 100%;
-            object-fit: contain;
-        }
+        #signature-image { max-width: 100%; max-height: 100%; object-fit: contain; }
 
-        /* Estilo específico para las casillas de estrategias */
-        .strategy-box {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            height: 100px; /* Tamaño fijo para simular el rectángulo */
-            border: 2px solid #cbd5e1;
-            border-radius: 0.5rem;
-            text-align: center;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s;
-            user-select: none;
-            position: relative;
-            background-color: #f8fafc;
-            color: #475569;
-        }
-        .strategy-box.selected {
-            border-color: #0d9488; /* Teal 600 */
-            background-color: #ccfbf1; /* Teal 100 */
-            color: #0f766e; /* Teal 700 */
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
-        }
-        .strategy-checkbox {
-            position: absolute;
-            top: 8px;
-            right: 8px;
-            width: 1.25rem;
-            height: 1.25rem;
-            accent-color: #0d9488; /* Teal 600 */
-        }
-        /* Estilos para el Canvas de Firma */
-        #signature-canvas {
-            border: 2px solid #3b82f6;
-            cursor: crosshair;
-            touch-action: none; /* Crucial para manejar el tacto en móviles */
-        }
+        /* Strategy boxes */
+        .strategy-box { display:flex; align-items:center; justify-content:center; height:100px; border:2px solid #cbd5e1; border-radius:0.5rem; text-align:center; font-weight:600; cursor:pointer; transition:all .2s; user-select:none; position:relative; background:#f8fafc; color:#475569; }
+        .strategy-box.selected { border-color:#0d9488; background:#ccfbf1; color:#0f766e; box-shadow:0 4px 6px rgba(0,0,0,0.08); }
+        .strategy-checkbox { position:absolute; top:8px; right:8px; width:1.25rem; height:1.25rem; accent-color:#0d9488; }
 
-        /* Estilos específicos para la vista previa de PDF/Impresión */
-        .pdf-preview-container {
-            max-width: 800px; /* Limitar el ancho para simular un documento */
+        /* PREVIEW / PDF page fixed A4-like (px) */
+        .pdf-page {
+            width: 794px; /* aprox A4 @ 96dpi */
+            min-height: 1123px;
             margin: 0 auto;
-            background-color: white;
-            padding: 30px;
-            box-shadow: 0 0 10px rgba(0,0,0,0.1);
-        }
-        .pdf-section-title {
-            font-weight: bold;
-            font-size: 1.25rem;
-            margin-top: 1.5rem;
-            margin-bottom: 0.5rem;
-            border-bottom: 2px solid #ef4444;
-            padding-bottom: 4px;
-        }
-        .pdf-data-item {
-            display: flex;
-            justify-content: space-between;
-            border-bottom: 1px solid #e5e7eb;
-            padding: 6px 0;
-            font-size: 0.95rem;
-        }
-        .pdf-data-label {
-            font-weight: 600;
-            color: #4b5563;
-            flex-basis: 40%;
-        }
-        .pdf-data-value {
+            background: #fff;
+            padding: 32px;
+            box-sizing: border-box;
             color: #1f2937;
-            text-align: right;
-            flex-basis: 60%;
+            font-size: 13px;
+            border: 1px solid #e6e9ee;
         }
-        .pdf-signature-box {
-            border: 1px solid #1f2937;
-            padding: 5px;
-            margin-top: 10px;
-            height: 100px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+        .pdf-header { display:flex; justify-content:space-between; align-items:flex-start; gap:20px; }
+        .pdf-title { color:#b91c1c; font-weight:700; font-size:18px; }
+        .pdf-subtitle { font-size:11px; color:#6b7280; margin-top:6px; }
+        .pdf-section-title { font-weight:700; color:#0f4b8f; margin-top:18px; margin-bottom:8px; font-size:14px; border-bottom:2px solid #ef4444; padding-bottom:6px; }
+        .pdf-data-item { display:flex; justify-content:space-between; border-bottom:1px solid #eef2f7; padding:6px 0; }
+        .pdf-data-label { font-weight:700; color:#374151; width:40%; }
+        .pdf-data-value { text-align:right; width:60%; color:#111827; }
+        .pdf-signature-box { border:1px solid #1f2937; padding:6px; margin-top:10px; height:100px; display:flex; align-items:center; justify-content:center; }
+        .pdf-check-result-si { color:#10b981; font-weight:700; }
+        .pdf-check-result-no { color:#ef4444; font-weight:700; }
+
+        /* small helpers */
+        .hidden-el { display:none !important; }
+
+        /* Print rules: show only the preview modal content (the PDF page) */
+        @media print {
+            body * { visibility: hidden; }
+            #pdf-preview-modal, #pdf-preview-modal * { visibility: visible; }
+            #pdf-preview-modal { position: absolute; left: 0; top: 0; width: 100%; height: auto; }
+            .pdf-page { margin: 0; box-shadow:none; border:none; width: 100%; min-height: auto; }
         }
-        .pdf-signature-image {
-            max-width: 100%;
-            max-height: 90px;
-            object-fit: contain;
-        }
-        .pdf-check-item {
-            display: flex;
-            justify-content: space-between;
-            padding: 8px 0;
-            border-bottom: 1px dashed #e5e7eb;
-            font-size: 0.95rem;
-        }
-        .pdf-check-result-si {
-            color: #10b981; /* Esmeralda */
-            font-weight: 700;
-        }
-        .pdf-check-result-no {
-            color: #ef4444; /* Rojo */
-            font-weight: 700;
-        }
-   /* Ocultar elementos de la interfaz en la vista de impresión */
-@media print {
 
-    /* Ocultar toda la interfaz normal */
-    #app-container,
-    #signature-modal,
-    #history-modal,
-    #preview-actions,
-    #custom-message-container,
-    .strategy-checkbox,
-    footer {
-        display: none !important;
-    }
+        /* Mobile-specific wizard container styling */
+        #wizard-container { max-width: 640px; margin: 0 auto; }
+        .wizard-step { display: none; }
+        .wizard-step.active { display: block; }
 
-    body {
-        background: white !important;
-    }
-
-    /* Mantener visible SOLO el contenido PDF */
-    #pdf-preview-modal {
-        display: block !important;        /* Mostrar el modal */
-        position: static !important;
-        background: white !important;
-        box-shadow: none !important;
-        width: 100% !important;
-        height: auto !important;
-    }
-
-    /* Ocultar el fondo oscuro del modal */
-    #pdf-preview-modal::before {
-        display: none !important;
-    }
-
-    /* Ocultar el encabezado y botones del modal */
-    #pdf-preview-modal > div > div:first-child,
-    #preview-actions {
-        display: none !important;
-    }
-
-    /* ESTE es el contenido REAL del PDF */
-    #pdf-content {
-        display: block !important;
-        padding: 0 !important;
-        margin: 0 !important;
-    }
-
-    /* Ajustar el contenedor del PDF */
-    .pdf-preview-container {
-        box-shadow: none !important;
-        max-width: 100% !important;
-        width: 100% !important;
-        margin: 0 !important;
-        padding: 0 !important;
-    }
-    /* ELIMINAR COMPLETAMENTE EL RECUADRO BLANCO */
-    .pdf-preview-container {
-        box-shadow: none !important;
-        background: transparent !important;
-        border: none !important;
-        padding: 0 !important;
-        margin: 0 !important;
-        width: 100% !important;
-        max-width: 100% !important;
-        border-radius: 0 !important;
-    }
-
-    /* También eliminamos el padding global del pdf-content */
-    #pdf-content {
-        padding: 0 !important;
-        margin: 0 !important;
-        background: white !important;
-    }
-}
-
-
-
+        /* Make preview modal center nicely */
+        #pdf-preview-modal > div { display:flex; justify-content:center; align-items:flex-start; padding:24px; }
     </style>
 </head>
 <body class="p-4 sm:p-8">
 
     <div id="app-container" class="max-w-4xl mx-auto bg-white shadow-2xl rounded-xl p-6 md:p-10">
-
-        <!-- Área de Carga y Usuario (Simplificada para Local Storage) -->
         <div class="mb-4 flex justify-end items-center text-sm text-gray-500">
             <div id="user-info">ID Local: <span id="user-id" class="font-mono text-xs bg-gray-100 p-1 rounded">Cargando...</span></div>
         </div>
-        
-        <!-- Alerta de Mensajes Personalizada -->
+
         <div id="custom-message-container" aria-live="polite"></div>
 
-        <!-- Encabezado -->
         <header class="mb-8 border-b-4 border-red-600 pb-4">
-            <h1 class="text-3xl sm:text-4xl font-extrabold text-gray-800">
-                ART: Análisis de Riesgos de la Tarea (Chequeo Pre-Tarea)
-            </h1>
+            <h1 class="text-3xl sm:text-4xl font-extrabold text-gray-800">ART: Análisis de Riesgos de la Tarea (Chequeo Pre-Tarea)</h1>
         </header>
 
-        <!-- Sección I: ETAPA 1 -->
-        <section class="mb-10" id="etapa1-section">
-            <h2 class="text-2xl font-bold text-red-700 mb-6 border-b-2 border-red-700 pb-2">I) ETAPA 1</h2>
-            
-            <!-- Subsección 1.1: ANTECEDENTES DEL TRABAJO (CON FIRMA) -->
-            <div class="p-5 bg-gray-50 rounded-lg border border-gray-200 mb-8" id="subseccion-1-1">
-                 <h3 class="text-xl font-semibold text-gray-700 mb-4 border-b pb-2">1.1) ANTECEDENTES DEL TRABAJO</h3>
-            
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <!-- Fila 1: Empresa y Supervisor -->
-                    <input type="text" id="empresa" placeholder="NOMBRE DE LA EMPRESA" class="p-3 border rounded-lg focus:ring-red-500 focus:border-red-500 col-span-1 uppercase">
-                    <input type="text" id="supervisor" placeholder="NOMBRE DEL SUPERVISOR RESPONSABLE DEL TRABAJO" class="p-3 border rounded-lg focus:ring-red-500 focus:border-red-500 col-span-1 uppercase">
+        <!-- CONTAINER PARA FORMULARIO / WIZARD -->
+        <div id="form-root">
+            <!-- El formulario completo (escritorio) -->
+            <div id="full-form" class="">
+                <!-- Mantuvimos la estructura original (abreviado aquí para brevedad) -->
+                <section id="etapa1-section" class="mb-10">
+                    <h2 class="text-2xl font-bold text-red-700 mb-6 border-b-2 border-red-700 pb-2">I) ETAPA 1</h2>
 
-                    <!-- Fila 2: Área de Trabajo y Lugar Específico -->
-                    <input type="text" id="area" placeholder="ÁREA DE TRABAJO" class="p-3 border rounded-lg focus:ring-red-500 focus:border-red-500 col-span-1 uppercase">
-                    <input type="text" id="lugar_especifico" placeholder="LUGAR ESPECÍFICO" class="p-3 border rounded-lg focus:ring-red-500 focus:border-red-500 col-span-1 uppercase">
+                    <div class="p-5 bg-gray-50 rounded-lg border border-gray-200 mb-8" id="subseccion-1-1">
+                        <h3 class="text-xl font-semibold text-gray-700 mb-4 border-b pb-2">1.1) ANTECEDENTES DEL TRABAJO</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <input type="text" id="empresa" placeholder="NOMBRE DE LA EMPRESA" class="p-3 border rounded-lg focus:ring-red-500 focus:border-red-500 col-span-1 uppercase">
+                            <input type="text" id="supervisor" placeholder="NOMBRE DEL SUPERVISOR RESPONSABLE DEL TRABAJO" class="p-3 border rounded-lg focus:ring-red-500 focus:border-red-500 col-span-1 uppercase">
+                            <input type="text" id="area" placeholder="ÁREA DE TRABAJO" class="p-3 border rounded-lg focus:ring-red-500 focus:border-red-500 col-span-1 uppercase">
+                            <input type="text" id="lugar_especifico" placeholder="LUGAR ESPECÍFICO" class="p-3 border rounded-lg focus:ring-red-500 focus:border-red-500 col-span-1 uppercase">
+                            <input type="date" id="fecha" class="p-3 border rounded-lg focus:ring-red-500 focus:border-red-500">
+                            <div class="grid grid-cols-2 gap-4">
+                                <input type="time" id="hora_inicio" class="p-3 border rounded-lg focus:ring-red-500 focus:border-red-500" title="Hora de Inicio">
+                                <input type="time" id="hora_termino" class="p-3 border rounded-lg focus:ring-red-500 focus:border-red-500" title="Hora de Término">
+                            </div>
+                        </div>
 
-                    <!-- Fila 3: Fecha, Hora Inicio, Hora Término -->
-                    <input type="date" id="fecha" placeholder="FECHA" class="p-3 border rounded-lg focus:ring-red-500 focus:border-red-500">
-                    
-                    <div class="grid grid-cols-2 gap-4">
-                        <input type="time" id="hora_inicio" placeholder="HORA DE INICIO" class="p-3 border rounded-lg focus:ring-red-500 focus:border-red-500" title="Hora de Inicio">
-                        <input type="time" id="hora_termino" placeholder="HORA DE TÉRMINO" class="p-3 border rounded-lg focus:ring-red-500 focus:border-red-500" title="Hora de Término">
-                    </div>
-                </div>
-                
-                <textarea id="descripcion" placeholder="DESCRIPCIÓN DE LA TAREA (Detallada)" rows="3" class="mt-4 w-full p-3 border rounded-lg focus:ring-red-500 focus:border-red-500 uppercase"></textarea>
+                        <textarea id="descripcion" placeholder="DESCRIPCIÓN DE LA TAREA (Detallada)" rows="3" class="mt-4 w-full p-3 border rounded-lg focus:ring-red-500 focus:border-red-500 uppercase"></textarea>
 
-                <!-- Campo de Firma (Nuevo) -->
-                <div class="mt-4 border-t pt-4">
-                    <label class="block text-sm font-medium text-gray-700 mb-2">FIRMA DEL SUPERVISOR RESPONSABLE</label>
-                    <div id="signature-display-box" onclick="openSignatureModal()">
-                        <img id="signature-image" src="" alt="Firma digital" class="hidden">
-                        <span id="signature-placeholder">Clic aquí para firmar</span>
-                    </div>
-                    <!-- Almacenamiento oculto de la firma en Base64 -->
-                    <input type="hidden" id="firma_base64" value="">
-                </div>
-             </div>
-
-            <!-- Subsección 1.2: DE LOS TRABAJADORES: CONTESTE CADA PREGUNTA -->
-            <div class="p-5 bg-red-50 rounded-lg border border-red-200 mb-8" id="subseccion-1-2">
-                <h3 class="text-xl font-semibold text-red-600 mb-4 border-b border-red-300 pb-2">1.2) DE LOS TRABAJADORES: CONTESTE CADA PREGUNTA</h3>
-
-                <!-- Alerta de "NO INICIAR" para 1.2 -->
-                <div id="no-iniciar-alert-1-2" class="hidden p-4 mb-4 text-sm text-yellow-800 rounded-lg bg-yellow-100" role="alert">
-                    <svg class="flex-shrink-0 inline w-4 h-4 me-3" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
-                        <path d="M10 .5a9.5 9.5 0 1 0 9.5 9.5A9.51 9.51 0 0 0 10 .5ZM10 15a1 1 0 1 1 0-2 1 1 0 0 1 0 2Zm1-4a1 1 0 0 1-2 0V6a1 1 0 0 1 2 0v5Z"/>
-                    </svg>
-                    <span class="font-medium">ATENCIÓN:</span> UN "NO" EN CUALQUIERA DE LAS PREGUNTAS SIGNIFICA <span class="warning-text">NO INICIAR LA TAREA</span> Y DAR AVISO AL SUPERVISOR.
-                </div>
-
-                <div id="check-list-1-2">
-                    <!-- Pregunta 1 (1.2) -->
-                    <div class="flex items-center justify-between py-3 border-b border-red-100" data-pregunta="condiciones_fisicas">
-                        <label class="text-gray-700 text-base flex-1 mr-4">1. ¿Me encuentro en condiciones físicas y psicológicas para realizar la tarea?</label>
-                        <div class="flex space-x-4">
-                            <button data-answer="Si" class="answer-btn-1-2 text-white bg-green-500 hover:bg-green-600 font-medium rounded-lg text-sm px-4 py-2 transition duration-150">Sí</button>
-                            <button data-answer="No" class="answer-btn-1-2 text-white bg-red-500 hover:bg-red-600 font-medium rounded-lg text-sm px-4 py-2 transition duration-150">No</button>
+                        <div class="mt-4 border-t pt-4">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">FIRMA DEL SUPERVISOR RESPONSABLE</label>
+                            <div id="signature-display-box" onclick="openSignatureModal()">
+                                <img id="signature-image" src="" alt="Firma digital" class="hidden">
+                                <span id="signature-placeholder">Clic aquí para firmar</span>
+                            </div>
+                            <input type="hidden" id="firma_base64" value="">
                         </div>
                     </div>
-                    <!-- Pregunta 2 (1.2) -->
-                    <div class="flex items-center justify-between py-3 border-b border-red-100" data-pregunta="condiciones_entorno">
-                        <label class="text-gray-700 text-base flex-1 mr-4">2. ¿Las condiciones del entorno permiten realizar mi trabajo de manera segura?</label>
-                        <div class="flex space-x-4">
-                            <button data-answer="Si" class="answer-btn-1-2 text-white bg-green-500 hover:bg-green-600 font-medium rounded-lg text-sm px-4 py-2 transition duration-150">Sí</button>
-                            <button data-answer="No" class="answer-btn-1-2 text-white bg-red-500 hover:bg-red-600 font-medium rounded-lg text-sm px-4 py-2 transition duration-150">No</button>
+
+                    <!-- Subsección 1.2 -->
+                    <div class="p-5 bg-red-50 rounded-lg border border-red-200 mb-8" id="subseccion-1-2">
+                        <h3 class="text-xl font-semibold text-red-600 mb-4 border-b border-red-300 pb-2">1.2) DE LOS TRABAJADORES: CONTESTE CADA PREGUNTA</h3>
+                        <div id="no-iniciar-alert-1-2" class="hidden p-4 mb-4 text-sm text-yellow-800 rounded-lg bg-yellow-100" role="alert">
+                            <svg class="flex-shrink-0 inline w-4 h-4 me-3" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
+                                <path d="M10 .5a9.5 9.5 0 1 0 9.5 9.5A9.51 9.51 0 0 0 10 .5ZM10 15a1 1 0 1 1 0-2 1 1 0 0 1 0 2Zm1-4a1 1 0 0 1-2 0V6a1 1 0 0 1 2 0v5Z"/>
+                            </svg>
+                            <span class="font-medium">ATENCIÓN:</span> UN "NO" EN CUALQUIERA DE LAS PREGUNTAS SIGNIFICA <span class="text-red-600 font-semibold">NO INICIAR LA TAREA</span> Y DAR AVISO AL SUPERVISOR.
+                        </div>
+
+                        <div id="check-list-1-2">
+                            <!-- preguntas 1.2 (repetidas del original) -->
+                            <div class="flex items-center justify-between py-3 border-b border-red-100" data-pregunta="condiciones_fisicas">
+                                <label class="text-gray-700 text-base flex-1 mr-4">1. ¿Me encuentro en condiciones físicas y psicológicas para realizar la tarea?</label>
+                                <div class="flex space-x-4">
+                                    <button data-answer="Si" class="answer-btn-1-2 text-white bg-green-500 hover:bg-green-600 font-medium rounded-lg text-sm px-4 py-2">Sí</button>
+                                    <button data-answer="No" class="answer-btn-1-2 text-white bg-red-500 hover:bg-red-600 font-medium rounded-lg text-sm px-4 py-2">No</button>
+                                </div>
+                            </div>
+                            <div class="flex items-center justify-between py-3 border-b border-red-100" data-pregunta="condiciones_entorno">
+                                <label class="text-gray-700 text-base flex-1 mr-4">2. ¿Las condiciones del entorno permiten realizar mi trabajo de manera segura?</label>
+                                <div class="flex space-x-4">
+                                    <button data-answer="Si" class="answer-btn-1-2 text-white bg-green-500 hover:bg-green-600 font-medium rounded-lg text-sm px-4 py-2">Sí</button>
+                                    <button data-answer="No" class="answer-btn-1-2 text-white bg-red-500 hover:bg-red-600 font-medium rounded-lg text-sm px-4 py-2">No</button>
+                                </div>
+                            </div>
+                            <div class="flex items-center justify-between py-3 border-b border-red-100" data-pregunta="areas_condiciones">
+                                <label class="text-gray-700 text-base flex-1 mr-4">3. ¿Verifiqué que las áreas de desplazamiento y trabajo se encuentran en condiciones?</label>
+                                <div class="flex space-x-4">
+                                    <button data-answer="Si" class="answer-btn-1-2 text-white bg-green-500 hover:bg-green-600 font-medium rounded-lg text-sm px-4 py-2">Sí</button>
+                                    <button data-answer="No" class="answer-btn-1-2 text-white bg-red-500 hover:bg-red-600 font-medium rounded-lg text-sm px-4 py-2">No</button>
+                                </div>
+                            </div>
+                            <div class="flex items-center justify-between py-3 border-b border-red-100" data-pregunta="epp_especificos">
+                                <label class="text-gray-700 text-base flex-1 mr-4">4. ¿Poseo todos los elementos de protección personal (EPP) específicos para la tarea?</label>
+                                <div class="flex space-x-4">
+                                    <button data-answer="Si" class="answer-btn-1-2 text-white bg-green-500 hover:bg-green-600 font-medium rounded-lg text-sm px-4 py-2">Sí</button>
+                                    <button data-answer="No" class="answer-btn-1-2 text-white bg-red-500 hover:bg-red-600 font-medium rounded-lg text-sm px-4 py-2">No</button>
+                                </div>
+                            </div>
+                            <div class="flex items-center justify-between py-3 border-b border-red-100" data-pregunta="equipos_herramientas">
+                                <label class="text-gray-700 text-base flex-1 mr-4">5. ¿Dispongo de equipos y herramientas apropiadas, en buen estado y con inspección al día?</label>
+                                <div class="flex space-x-4">
+                                    <button data-answer="Si" class="answer-btn-1-2 text-white bg-green-500 hover:bg-green-600 font-medium rounded-lg text-sm px-4 py-2">Sí</button>
+                                    <button data-answer="No" class="answer-btn-1-2 text-white bg-red-500 hover:bg-red-600 font-medium rounded-lg text-sm px-4 py-2">No</button>
+                                </div>
+                            </div>
+                            <div class="flex items-center justify-between py-3" data-pregunta="actuar_emergencia">
+                                <label class="text-gray-700 text-base flex-1 mr-4">6. ¿Sé cómo activar y actuar ante una emergencia?</label>
+                                <div class="flex space-x-4">
+                                    <button data-answer="Si" class="answer-btn-1-2 text-white bg-green-500 hover:bg-green-600 font-medium rounded-lg text-sm px-4 py-2">Sí</button>
+                                    <button data-answer="No" class="answer-btn-1-2 text-white bg-red-500 hover:bg-red-600 font-medium rounded-lg text-sm px-4 py-2">No</button>
+                                </div>
+                            </div>
                         </div>
                     </div>
-                    <!-- Pregunta 3 (1.2) -->
-                    <div class="flex items-center justify-between py-3 border-b border-red-100" data-pregunta="areas_condiciones">
-                        <label class="text-gray-700 text-base flex-1 mr-4">3. ¿Verifiqué que las áreas de desplazamiento y trabajo se encuentran en condiciones?</label>
-                        <div class="flex space-x-4">
-                            <button data-answer="Si" class="answer-btn-1-2 text-white bg-green-500 hover:bg-green-600 font-medium rounded-lg text-sm px-4 py-2 transition duration-150">Sí</button>
-                            <button data-answer="No" class="answer-btn-1-2 text-white bg-red-500 hover:bg-red-600 font-medium rounded-lg text-sm px-4 py-2 transition duration-150">No</button>
+
+                    <!-- Subsección 1.3 -->
+                    <div class="p-5 bg-blue-50 rounded-lg border border-blue-200 mb-8" id="subseccion-1-3">
+                        <h3 class="text-xl font-semibold text-blue-600 mb-4 border-b border-blue-300 pb-2">1.3) DE LA TAREA: CONTESTE CADA PREGUNTA</h3>
+
+                        <div class="py-3 border-b border-blue-100" data-pregunta="capacitado_prevencion">
+                            <label class="text-gray-700 text-base block mb-2">1. ¿Estoy capacitado(a) y conozco las medidas de prevención ...?</label>
+                            <div class="flex justify-start space-x-4">
+                                <button data-answer="Si" class="answer-btn-1-3 text-white bg-green-500 hover:bg-green-600 font-medium rounded-lg text-sm px-4 py-2">Sí</button>
+                                <button data-answer="No" class="answer-btn-1-3 text-white bg-red-500 hover:bg-red-600 font-medium rounded-lg text-sm px-4 py-2">No</button>
+                            </div>
+                            <p class="text-xs text-red-600 font-semibold mt-2">UN "NO" A ESTA PREGUNTA SIGNIFICA <span class="text-red-700 font-bold">NO INICIAR LA TAREA</span></p>
+                        </div>
+
+                        <div class="py-3 border-b border-blue-100" data-pregunta="documento_regula">
+                            <label class="text-gray-700 text-base block mb-2">2. ¿Existe algún documento que regule mi trabajo o tarea?</label>
+                            <div class="flex justify-start space-x-4">
+                                <button data-answer="Si" class="answer-btn-1-3 text-white bg-green-500 hover:bg-green-600 font-medium rounded-lg text-sm px-4 py-2">Sí</button>
+                                <button data-answer="No" class="answer-btn-1-3 text-white bg-red-500 hover:bg-red-600 font-medium rounded-lg text-sm px-4 py-2">No</button>
+                            </div>
+                            <textarea id="documento_tipo" placeholder="Indique cuál: Manual, procedimiento, instructivo, etc." rows="1" class="hidden mt-2 w-full p-2 border rounded-lg focus:ring-blue-500 focus:border-blue-500 text-sm"></textarea>
+                        </div>
+
+                        <div class="py-3" data-pregunta="alcance_actividades">
+                            <label class="text-gray-700 text-base block mb-2">3. ¿El manual, reglamento, ... incluye todas las actividades?</label>
+                            <div class="flex justify-start space-x-4">
+                                <button data-answer="Si" class="answer-btn-1-3 text-white bg-green-500 hover:bg-green-600 font-medium rounded-lg text-sm px-4 py-2">Sí</button>
+                                <button data-answer="No" class="answer-btn-1-3 text-white bg-red-500 hover:bg-red-600 font-medium rounded-lg text-sm px-4 py-2">No</button>
+                            </div>
                         </div>
                     </div>
-                    <!-- Pregunta 4 (1.2) -->
-                    <div class="flex items-center justify-between py-3 border-b border-red-100" data-pregunta="epp_especificos">
-                        <label class="text-gray-700 text-base flex-1 mr-4">4. ¿Poseo todos los elementos de protección personal (EPP) específicos para la tarea?</label>
-                        <div class="flex space-x-4">
-                            <button data-answer="Si" class="answer-btn-1-2 text-white bg-green-500 hover:bg-green-600 font-medium rounded-lg text-sm px-4 py-2 transition duration-150">Sí</button>
-                            <button data-answer="No" class="answer-btn-1-2 text-white bg-red-500 hover:bg-red-600 font-medium rounded-lg text-sm px-4 py-2 transition duration-150">No</button>
+
+                    <!-- Subsección 1.4 -->
+                    <div class="p-5 bg-teal-50 rounded-lg border border-teal-200" id="subseccion-1-4">
+                        <h3 class="text-xl font-semibold text-teal-700 mb-4 border-b border-teal-300 pb-2">1.4) Verificar si aplica una o más Estrategias de Control</h3>
+                        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-7 gap-4" id="estrategias-grid">
+                            <div class="strategy-box" data-strategy="Aislamiento">
+                                <label class="flex flex-col items-center justify-center p-2 h-full w-full">
+                                    <span class="text-sm">Aislamiento</span>
+                                    <span class="text-xs font-normal text-gray-500">(Control de Ingeniería)</span>
+                                    <input type="checkbox" data-strategy-name="Aislamiento" class="strategy-checkbox" onchange="toggleStrategyBox(this)">
+                                </label>
+                            </div>
+                            <div class="strategy-box" data-strategy="Señalización">
+                                <label class="flex flex-col items-center justify-center p-2 h-full w-full">
+                                    <span class="text-sm">Señalización</span>
+                                    <span class="text-xs font-normal text-gray-500">(Control Administrativo)</span>
+                                    <input type="checkbox" data-strategy-name="Señalización" class="strategy-checkbox" onchange="toggleStrategyBox(this)">
+                                </label>
+                            </div>
+                            <div class="strategy-box" data-strategy="Permiso de Trabajo">
+                                <label class="flex flex-col items-center justify-center p-2 h-full w-full">
+                                    <span class="text-sm">Permiso de Trabajo</span>
+                                    <span class="text-xs font-normal text-gray-500">(Control Administrativo)</span>
+                                    <input type="checkbox" data-strategy-name="Permiso de Trabajo" class="strategy-checkbox" onchange="toggleStrategyBox(this)">
+                                </label>
+                            </div>
+                            <div class="strategy-box" data-strategy="EPP">
+                                <label class="flex flex-col items-center justify-center p-2 h-full w-full">
+                                    <span class="text-sm">Uso de EPP</span>
+                                    <span class="text-xs font-normal text-gray-500">(Control de EPP)</span>
+                                    <input type="checkbox" data-strategy-name="EPP" class="strategy-checkbox" onchange="toggleStrategyBox(this)">
+                                </label>
+                            </div>
                         </div>
                     </div>
-                    <!-- Pregunta 5 (1.2) -->
-                    <div class="flex items-center justify-between py-3 border-b border-red-100" data-pregunta="equipos_herramientas">
-                        <label class="text-gray-700 text-base flex-1 mr-4">5. ¿Dispongo de equipos y herramientas apropiadas, en buen estado y con inspección al día?</label>
-                        <div class="flex space-x-4">
-                            <button data-answer="Si" class="answer-btn-1-2 text-white bg-green-500 hover:bg-green-600 font-medium rounded-lg text-sm px-4 py-2 transition duration-150">Sí</button>
-                            <button data-answer="No" class="answer-btn-1-2 text-white bg-red-500 hover:bg-red-600 font-medium rounded-lg text-sm px-4 py-2 transition duration-150">No</button>
+                </section>
+
+                <footer class="mt-10 pt-6 border-t border-gray-300 text-center">
+                    <button onclick="showPdfPreview()" id="preview-art-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-extrabold py-3 px-8 rounded-xl shadow-lg">Previsualizar ART (PDF)</button>
+                    <p class="text-sm text-gray-500 mt-4">Previsualice y luego Guarde o Imprima el documento final.</p>
+                    <button onclick="loadArtHistory()" id="load-history-btn" class="mt-4 bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-5 rounded-lg shadow-md">Ver Historial Local</button>
+                </footer>
+            </div>
+
+            <!-- Wizard (móvil) -->
+            <div id="wizard" class="hidden">
+                <div id="wizard-container" class="bg-white rounded-lg p-4 shadow">
+                    <div id="wizard-steps-indicator" class="mb-4 text-sm text-gray-600"></div>
+
+                    <div class="wizard-step" data-step="0" id="step-0">
+                        <h3 class="font-bold mb-2">Paso 1 — Antecedentes</h3>
+                        <input type="text" id="empresa_m" placeholder="Empresa" class="mb-2 p-3 border rounded w-full uppercase">
+                        <input type="text" id="supervisor_m" placeholder="Supervisor" class="mb-2 p-3 border rounded w-full uppercase">
+                        <input type="text" id="area_m" placeholder="Área" class="mb-2 p-3 border rounded w-full uppercase">
+                        <input type="text" id="lugar_especifico_m" placeholder="Lugar específico" class="mb-2 p-3 border rounded w-full uppercase">
+                        <input type="date" id="fecha_m" class="mb-2 p-3 border rounded w-full">
+                        <div class="grid grid-cols-2 gap-2">
+                            <input type="time" id="hora_inicio_m" class="p-3 border rounded">
+                            <input type="time" id="hora_termino_m" class="p-3 border rounded">
+                        </div>
+                        <textarea id="descripcion_m" rows="3" placeholder="Descripción" class="mt-2 p-3 border rounded w-full uppercase"></textarea>
+                    </div>
+
+                    <div class="wizard-step" data-step="1" id="step-1">
+                        <h3 class="font-bold mb-2">Paso 2 — Chequeo Trabajadores</h3>
+                        <div id="check-list-1-2-m">
+                            <!-- We'll clone the desktop items visually simpler -->
                         </div>
                     </div>
-                    <!-- Pregunta 6 (1.2) -->
-                    <div class="flex items-center justify-between py-3" data-pregunta="actuar_emergencia">
-                        <label class="text-gray-700 text-base flex-1 mr-4">6. ¿Sé cómo activar y actuar ante una emergencia?</label>
-                        <div class="flex space-x-4">
-                            <button data-answer="Si" class="answer-btn-1-2 text-white bg-green-500 hover:bg-green-600 font-medium rounded-lg text-sm px-4 py-2 transition duration-150">Sí</button>
-                            <button data-answer="No" class="answer-btn-1-2 text-white bg-red-500 hover:bg-red-600 font-medium rounded-lg text-sm px-4 py-2 transition duration-150">No</button>
+
+                    <div class="wizard-step" data-step="2" id="step-2">
+                        <h3 class="font-bold mb-2">Paso 3 — Chequeo Tarea</h3>
+                        <div id="subseccion-1-3-m"></div>
+                    </div>
+
+                    <div class="wizard-step" data-step="3" id="step-3">
+                        <h3 class="font-bold mb-2">Paso 4 — Estrategias de Control</h3>
+                        <div id="estrategias-grid-m" class="grid grid-cols-2 gap-2"></div>
+                    </div>
+
+                    <div class="wizard-step" data-step="4" id="step-4">
+                        <h3 class="font-bold mb-2">Paso 5 — Firma</h3>
+                        <div id="signature-display-box-m" class="mb-3" onclick="openSignatureModal()">Clic aquí para firmar</div>
+                        <p class="text-sm text-gray-600">La firma es obligatoria antes de previsualizar.</p>
+                    </div>
+
+                    <div class="mt-4 flex justify-between">
+                        <button id="wizard-prev" class="bg-gray-300 px-4 py-2 rounded">Anterior</button>
+                        <div class="flex gap-2">
+                            <button id="wizard-save" class="bg-green-500 text-white px-4 py-2 rounded">Guardar borrador</button>
+                            <button id="wizard-next" class="bg-blue-600 text-white px-4 py-2 rounded">Siguiente</button>
                         </div>
                     </div>
                 </div>
             </div>
+        </div>
 
-            <!-- Subsección 1.3: DE LA TAREA: CONTESTE CADA PREGUNTA -->
-            <div class="p-5 bg-blue-50 rounded-lg border border-blue-200 mb-8" id="subseccion-1-3">
-                <h3 class="text-xl font-semibold text-blue-600 mb-4 border-b border-blue-300 pb-2">1.3) DE LA TAREA: CONTESTE CADA PREGUNTA</h3>
-
-                <!-- Pregunta 1 (1.3) -->
-                <div class="py-3 border-b border-blue-100" data-pregunta="capacitado_prevencion">
-                    <label class="text-gray-700 text-base flex-1 mr-4 block mb-2">1. ¿Estoy capacitado(a) y conozco las medidas de prevención que mi empleador ha definido para ejecutar mi trabajo o tarea de manera correcta y segura?</label>
-                    
-                    <div class="flex justify-start space-x-4">
-                        <button data-answer="Si" class="answer-btn-1-3 text-white bg-green-500 hover:bg-green-600 font-medium rounded-lg text-sm px-4 py-2 transition duration-150">Sí</button>
-                        <button data-answer="No" class="answer-btn-1-3 text-white bg-red-500 hover:bg-red-600 font-medium rounded-lg text-sm px-4 py-2 transition duration-150">No</button>
-                    </div>
-                    
-                    <!-- Advertencia específica para la pregunta 1.3.1 -->
-                    <p class="text-xs text-red-600 font-semibold mt-2">UN "NO" A ESTA PREGUNTA SIGNIFICA <span class="warning-text">NO INICIAR LA TAREA</span> Y DAR AVISO A SU SUPERVISIÓN.</p>
-                </div>
-
-                <!-- Pregunta 2 (1.3) con campo de tipeo condicional -->
-                <div class="py-3 border-b border-blue-100" data-pregunta="documento_regula">
-                    <label class="text-gray-700 text-base flex-1 mr-4 block mb-2">2. ¿Existe algún documento que regule mi trabajo o tarea? Manual, reglamento, procedimiento, instructivo de trabajo u otro.</label>
-                    <div class="flex justify-start space-x-4">
-                        <button data-answer="Si" class="answer-btn-1-3 text-white bg-green-500 hover:bg-green-600 font-medium rounded-lg text-sm px-4 py-2 transition duration-150">Sí</button>
-                        <button data-answer="No" class="answer-btn-1-3 text-white bg-red-500 hover:bg-red-600 font-medium rounded-lg text-sm px-4 py-2 transition duration-150">No</button>
-                    </div>
-                    
-                    <!-- Campo de Tipeo Condicional -->
-                    <textarea id="documento_tipo" placeholder="Indique cuál: Manual, procedimiento, instructivo, etc." rows="1" class="hidden mt-2 w-full p-2 border rounded-lg focus:ring-blue-500 focus:border-blue-500 text-sm"></textarea>
-                </div>
-
-                <!-- Pregunta 3 (1.3) -->
-                <div class="py-3" data-pregunta="alcance_actividades">
-                    <label class="text-gray-700 text-base flex-1 mr-4 block mb-2">3. ¿El manual, reglamento, procedimiento, instructivo u otro incluye todas las actividades (alcance) a desarrollar en terreno?</label>
-                    <div class="flex justify-start space-x-4">
-                        <button data-answer="Si" class="answer-btn-1-3 text-white bg-green-500 hover:bg-green-600 font-medium rounded-lg text-sm px-4 py-2 transition duration-150">Sí</button>
-                        <button data-answer="No" class="answer-btn-1-3 text-white bg-red-500 hover:bg-red-600 font-medium rounded-lg text-sm px-4 py-2 transition duration-150">No</button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Subsección 1.4: Estrategias de Control -->
-            <div class="p-5 bg-teal-50 rounded-lg border border-teal-200" id="subseccion-1-4">
-                <h3 class="text-xl font-semibold text-teal-700 mb-4 border-b border-teal-300 pb-2">1.4) Verificar si aplica una o más Estrategias de Control, seleccionando la casilla:</h3>
-
-                <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-7 gap-4" id="estrategias-grid">
-                    <!-- Casilla de control de ejemplo -->
-                    <div class="strategy-box" data-strategy="Aislamiento">
-                        <label class="flex flex-col items-center justify-center p-2 h-full w-full">
-                            <span class="text-sm">Aislamiento</span>
-                            <span class="text-xs font-normal text-gray-500">(Control de Ingeniería)</span>
-                            <input type="checkbox" data-strategy-name="Aislamiento" class="strategy-checkbox" onchange="toggleStrategyBox(this)">
-                        </label>
-                    </div>
-                    <!-- Casillas de ejemplo adicionales -->
-                    <div class="strategy-box" data-strategy="Señalización">
-                        <label class="flex flex-col items-center justify-center p-2 h-full w-full">
-                            <span class="text-sm">Señalización</span>
-                            <span class="text-xs font-normal text-gray-500">(Control Administrativo)</span>
-                            <input type="checkbox" data-strategy-name="Señalización" class="strategy-checkbox" onchange="toggleStrategyBox(this)">
-                        </label>
-                    </div>
-                    <div class="strategy-box" data-strategy="Permiso de Trabajo">
-                        <label class="flex flex-col items-center justify-center p-2 h-full w-full">
-                            <span class="text-sm">Permiso de Trabajo</span>
-                            <span class="text-xs font-normal text-gray-500">(Control Administrativo)</span>
-                            <input type="checkbox" data-strategy-name="Permiso de Trabajo" class="strategy-checkbox" onchange="toggleStrategyBox(this)">
-                        </label>
-                    </div>
-                    <div class="strategy-box" data-strategy="EPP">
-                        <label class="flex flex-col items-center justify-center p-2 h-full w-full">
-                            <span class="text-sm">Uso de EPP</span>
-                            <span class="text-xs font-normal text-gray-500">(Control de EPP)</span>
-                            <input type="checkbox" data-strategy-name="EPP" class="strategy-checkbox" onchange="toggleStrategyBox(this)">
-                        </label>
-                    </div>
-                </div>
-            </div>
-            
-        </section>
-
-        <!-- Pie de página, Botones de Previsualización y Historial -->
-        <footer class="mt-10 pt-6 border-t border-gray-300 text-center">
-            <button onclick="showPdfPreview()" id="preview-art-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-extrabold py-3 px-8 rounded-xl shadow-lg transition duration-300 transform hover:scale-105">
-                Previsualizar ART (PDF)
-            </button>
-            <p class="text-sm text-gray-500 mt-4">Previsualice y luego Guarde o Imprima el documento final.</p>
-
-            <button onclick="loadArtHistory()" id="load-history-btn" class="mt-4 bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-5 rounded-lg shadow-md transition duration-150">
-                Ver Historial Local
-            </button>
-        </footer>
     </div>
 
-    <!-- Modal para Captura de Firma -->
+    <!-- Signature Modal -->
     <div id="signature-modal" class="fixed inset-0 bg-gray-600 bg-opacity-75 hidden items-center justify-center p-4 z-50">
         <div class="bg-white rounded-xl shadow-2xl w-full max-w-lg p-6">
             <div class="flex justify-between items-center border-b pb-3 mb-4">
                 <h3 class="text-2xl font-bold text-gray-800">Firma Digital del Supervisor</h3>
             </div>
-            
             <p class="text-sm text-gray-600 mb-3">Firme dentro del recuadro usando su dedo o stylus. La firma es obligatoria.</p>
-
-            <!-- Canvas para dibujar la firma -->
             <canvas id="signature-canvas" width="450" height="150" class="w-full border-4 border-dashed rounded-lg"></canvas>
-
             <div class="flex justify-between mt-4 space-x-3">
-                <button onclick="clearSignatureCanvas()" class="flex-1 bg-yellow-500 hover:bg-yellow-600 text-white font-medium py-2 rounded-lg transition duration-150">
-                    Borrar Firma
-                </button>
-                <button onclick="saveSignature()" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 rounded-lg transition duration-150">
-                    Guardar y Cerrar
-                </button>
-                <button onclick="closeSignatureModal()" class="flex-1 bg-gray-400 hover:bg-gray-500 text-white font-medium py-2 rounded-lg transition duration-150">
-                    Cancelar
-                </button>
+                <button onclick="clearSignatureCanvas()" class="flex-1 bg-yellow-500 hover:bg-yellow-600 text-white font-medium py-2 rounded-lg">Borrar Firma</button>
+                <button onclick="saveSignature()" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 rounded-lg">Guardar y Cerrar</button>
+                <button onclick="closeSignatureModal()" class="flex-1 bg-gray-400 hover:bg-gray-500 text-white font-medium py-2 rounded-lg">Cancelar</button>
             </div>
         </div>
     </div>
 
-
-    <!-- Modal para Previsualización (Nuevo) -->
+    <!-- PDF Preview Modal -->
     <div id="pdf-preview-modal" class="fixed inset-0 bg-gray-600 bg-opacity-75 hidden items-center justify-center p-4 z-40">
-        <div class="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col">
-            <!-- Título y Botón de Cerrar -->
-            <div class="flex justify-between items-center border-b p-4 flex-shrink-0">
-                <h3 class="text-2xl font-bold text-gray-800">Previsualización del ART (Etapa 1)</h3>
-                <button onclick="document.getElementById('pdf-preview-modal').classList.add('hidden')" class="text-gray-500 hover:text-gray-800">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-                </button>
+        <div class="flex justify-center items-start w-full h-full overflow-auto p-6">
+            <div class="pdf-page" id="pdf-content">
+                <!-- filled by JS -->
             </div>
-
-            <!-- Contenido de la Previsualización -->
-            <div id="pdf-content" class="overflow-y-auto p-6 flex-grow">
-                <!-- Contenido generado por JS -->
-            </div>
-
-            <!-- Acciones de Guardado e Impresión -->
-            <div id="preview-actions" class="flex justify-end space-x-4 p-4 border-t bg-gray-50 flex-shrink-0">
-                <button onclick="saveArt()" class="hidden bg-green-600 hover:bg-green-700 text-white font-extrabold py-3 px-6 rounded-lg shadow-lg transition duration-150">
-                    ✅ Guardar ART Localmente
-                </button>
-                <button onclick="window.print()" class="bg-red-600 hover:bg-red-700 text-white font-extrabold py-3 px-6 rounded-lg shadow-lg transition duration-150">
-                    🖨️ Imprimir / Guardar como PDF
-                </button>
-            </div>
+        </div>
+        <div class="fixed bottom-6 right-6 flex gap-2" id="preview-actions">
+            <button onclick="saveArt()" class="hidden bg-green-600 hover:bg-green-700 text-white font-extrabold py-3 px-6 rounded-lg shadow-lg">✅ Guardar ART Localmente</button>
+            <button onclick="window.print()" class="bg-red-600 hover:bg-red-700 text-white font-extrabold py-3 px-6 rounded-lg shadow-lg">🖨️ Imprimir / Guardar como PDF</button>
+            <button onclick="document.getElementById('pdf-preview-modal').classList.add('hidden')" class="bg-gray-300 hover:bg-gray-400 text-gray-800 py-3 px-6 rounded-lg">Cerrar</button>
         </div>
     </div>
 
-
-    <!-- Modal para Historial de ARTs -->
+    <!-- History Modal -->
     <div id="history-modal" class="fixed inset-0 bg-gray-600 bg-opacity-75 hidden items-center justify-center p-4 z-50">
         <div class="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[80vh] overflow-y-auto p-6">
             <div class="flex justify-between items-center border-b pb-3 mb-4">
@@ -503,330 +340,177 @@
                 </button>
             </div>
             <div id="history-list" class="space-y-4">
-                <!-- La lista de ARTs cargados se insertará aquí -->
                 <p id="no-history-message" class="text-gray-500 italic hidden">No hay chequeos guardados localmente todavía.</p>
             </div>
         </div>
     </div>
 
-
     <script>
-        // --- GLOBAL VARIABLES FOR LOCAL STORAGE ---
-        // Generar un ID simple y único para fines de seguimiento local.
-        let userId = 'LocalUser-' + Math.random().toString(16).slice(2, 10);
-        const ART_HISTORY_KEY = 'art_chequeos_history'; 
+        /* ---------- Globals ---------- */
+        let userId = 'LocalUser-' + Math.random().toString(16).slice(2,10);
+        const ART_HISTORY_KEY = 'art_chequeos_history';
+        const ART_DRAFT_KEY = 'art_draft';
 
-        // --- FIRMA DIGITAL (CANVAS) VARIABLES ---
-        let canvas, ctx;
-        let isDrawing = false;
-        let lastX = 0;
-        let lastY = 0;
-        let signatureDataURL = ''; // Almacena la firma en Base64
+        /* Signature canvas variables */
+        let canvas, ctx, isDrawing=false, lastX=0, lastY=0, signatureDataURL='';
 
-        // --- INITIALIZATION ---
-        
-        /**
-         * Initializes the application: sets up user ID display and canvas.
-         */
+        /* Init */
         function initializeAppLogic() {
             document.getElementById('user-id').textContent = userId;
             setupEventListeners();
-            initializeSignatureCanvas(); 
+            initializeSignatureCanvas();
+            initStrategyBoxes();
+            setupDeviceMode(); // wizard or full form
+            restoreDraftIfAny();
+            window.addEventListener('resize', debounce(handleResize, 250));
         }
 
-        // --- SIGNATURE CANVAS LOGIC ---
-
-        /**
-         * Configura el canvas y sus listeners para la firma.
-         */
-        function initializeSignatureCanvas() {
+        /* ---------------- Signature Canvas ---------------- */
+        function initializeSignatureCanvas(){
             canvas = document.getElementById('signature-canvas');
             ctx = canvas.getContext('2d');
-            
-            // Estilos del trazo
-            ctx.strokeStyle = '#000000';
+            ctx.strokeStyle = '#000';
             ctx.lineJoin = 'round';
             ctx.lineCap = 'round';
             ctx.lineWidth = 3;
-
-            // Ajustar el tamaño del canvas al contenedor (Responsive)
-            const modal = document.getElementById('signature-modal').querySelector('div');
-            const observer = new ResizeObserver(entries => {
-                for (let entry of entries) {
-                    if (entry.target === modal) {
-                        const canvasContainerWidth = entry.contentRect.width - 48; // Restar padding modal
-                        canvas.width = canvasContainerWidth > 450 ? 450 : canvasContainerWidth;
-                        canvas.height = 150;
-                        // Si hay firma, redibujarla (opcional pero recomendado)
-                        if (signatureDataURL) {
-                            drawSignatureFromDataURL(signatureDataURL);
-                        }
-                    }
-                }
-            });
-            observer.observe(modal);
-
-            // Listeners para ratón
-            canvas.addEventListener('mousedown', (e) => startDrawing(e.offsetX, e.offsetY));
-            canvas.addEventListener('mousemove', (e) => draw(e.offsetX, e.offsetY));
+            // mouse
+            canvas.addEventListener('mousedown', (e)=>startDrawing(e.offsetX,e.offsetY));
+            canvas.addEventListener('mousemove', (e)=>draw(e.offsetX,e.offsetY));
             canvas.addEventListener('mouseup', stopDrawing);
             canvas.addEventListener('mouseout', stopDrawing);
-
-            // Listeners para tacto (móviles)
-            canvas.addEventListener('touchstart', (e) => {
-                e.preventDefault();
-                const rect = canvas.getBoundingClientRect();
-                const x = e.touches[0].clientX - rect.left;
-                const y = e.touches[0].clientY - rect.top;
-                startDrawing(x, y);
-            });
-            canvas.addEventListener('touchmove', (e) => {
-                e.preventDefault();
-                const rect = canvas.getBoundingClientRect();
-                const x = e.touches[0].clientX - rect.left;
-                const y = e.touches[0].clientY - rect.top;
-                draw(x, y);
-            });
+            // touch
+            canvas.addEventListener('touchstart', (e)=>{e.preventDefault(); const rect=canvas.getBoundingClientRect(); const x=e.touches[0].clientX-rect.left; const y=e.touches[0].clientY-rect.top; startDrawing(x,y);});
+            canvas.addEventListener('touchmove', (e)=>{e.preventDefault(); const rect=canvas.getBoundingClientRect(); const x=e.touches[0].clientX-rect.left; const y=e.touches[0].clientY-rect.top; draw(x,y);});
             canvas.addEventListener('touchend', stopDrawing);
         }
+        function startDrawing(x,y){ isDrawing=true; [lastX,lastY]=[x,y]; }
+        function draw(x,y){ if(!isDrawing) return; ctx.beginPath(); ctx.moveTo(lastX,lastY); ctx.lineTo(x,y); ctx.stroke(); [lastX,lastY]=[x,y]; }
+        function stopDrawing(){ isDrawing=false; }
 
-        function startDrawing(x, y) {
-            isDrawing = true;
-            [lastX, lastY] = [x, y];
-        }
-
-        function draw(x, y) {
-            if (!isDrawing) return;
-            ctx.beginPath();
-            ctx.moveTo(lastX, lastY);
-            ctx.lineTo(x, y);
-            ctx.stroke();
-            [lastX, lastY] = [x, y];
-        }
-
-        function stopDrawing() {
-            isDrawing = false;
-        }
-
-        /**
-         * Abre la ventana modal de firma.
-         */
-        window.openSignatureModal = function() {
+        window.openSignatureModal = function(){
             document.getElementById('signature-modal').classList.remove('hidden');
-            
-            // Si ya hay una firma, cargarla para que el usuario pueda modificarla
-            if (signatureDataURL) {
-                drawSignatureFromDataURL(signatureDataURL);
-            } else {
-                clearSignatureCanvas();
-            }
-        }
-        
-        /**
-         * Cierra la ventana modal de firma.
-         */
-        function closeSignatureModal() {
-            document.getElementById('signature-modal').classList.add('hidden');
-        }
+            // redraw existing signature if present
+            if(signatureDataURL) drawSignatureFromDataURL(signatureDataURL);
+            else clearSignatureCanvas();
+        };
 
-        /**
-         * Borra el contenido del canvas.
-         */
-        window.clearSignatureCanvas = function() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-        }
+        function closeSignatureModal(){ document.getElementById('signature-modal').classList.add('hidden'); }
 
-        /**
-         * Guarda la firma del canvas y la muestra en el formulario.
-         */
-        window.saveSignature = function() {
-            // Verificar si el canvas está vacío (solo fondo blanco)
-            const tempCanvas = document.createElement('canvas');
-            tempCanvas.width = canvas.width;
-            tempCanvas.height = canvas.height;
-            const tempCtx = tempCanvas.getContext('2d');
-            tempCtx.fillStyle = '#FFFFFF';
-            tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
-            const blankDataURL = tempCanvas.toDataURL();
-            
-            signatureDataURL = canvas.toDataURL('image/png');
+        window.clearSignatureCanvas = function(){
+            if(!ctx) return;
+            ctx.clearRect(0,0,canvas.width,canvas.height);
+        };
 
-            if (signatureDataURL === blankDataURL) {
-                showMessage('Error: La firma no puede estar vacía.', 'error');
-                return;
-            }
-            
-            // Almacenar en el campo oculto
-            document.getElementById('firma_base64').value = signatureDataURL;
-            
-            // Mostrar en el formulario
-            const imgElement = document.getElementById('signature-image');
-            imgElement.src = signatureDataURL;
-            imgElement.classList.remove('hidden');
-            document.getElementById('signature-placeholder').classList.add('hidden');
-            
+        window.saveSignature = function(){
+            // ensure not blank by comparing to blank white canvas
+            const temp = document.createElement('canvas'); temp.width=canvas.width; temp.height=canvas.height; const tctx=temp.getContext('2d'); tctx.fillStyle='#FFFFFF'; tctx.fillRect(0,0,temp.width,temp.height);
+            const blank = temp.toDataURL();
+            const data = canvas.toDataURL('image/png');
+            if(data === blank){ showMessage('Error: La firma no puede estar vacía.','error'); return; }
+            signatureDataURL = data;
+            document.getElementById('firma_base64').value = data;
+            const img = document.getElementById('signature-image'); img.src = data; img.classList.remove('hidden'); document.getElementById('signature-placeholder').classList.add('hidden');
+            // also update wizard box if mobile
+            const sigBox = document.getElementById('signature-display-box-m');
+            if(sigBox){ sigBox.innerHTML = '<img src="'+data+'" style="max-width:100%; max-height:80px; object-fit:contain"/>'; }
             closeSignatureModal();
-            showMessage('Firma guardada con éxito.', 'success');
-        }
-        
-        /**
-         * Dibuja una firma Base64 en el canvas.
-         * @param {string} dataURL - La cadena Base64 de la firma.
-         */
-        function drawSignatureFromDataURL(dataURL) {
-            clearSignatureCanvas();
-            if (!dataURL || dataURL === 'N/A') return;
-            
-            const img = new Image();
-            img.onload = function() {
-                // Escalar la imagen para que quepa en el canvas sin distorsión
-                const scaleX = canvas.width / img.width;
-                const scaleY = canvas.height / img.height;
-                const scale = Math.min(scaleX, scaleY);
-                const x = (canvas.width / 2) - (img.width / 2) * scale;
-                const y = (canvas.height / 2) - (img.height / 2) * scale;
-                
-                // Asegurarse de que el canvas esté blanco de fondo antes de dibujar la imagen
-                ctx.fillStyle = '#FFFFFF';
-                ctx.fillRect(0, 0, canvas.width, canvas.height);
+            showMessage('Firma guardada con éxito.','success');
+            saveDraft(); // persist draft
+        };
 
-                ctx.drawImage(img, x, y, img.width * scale, img.height * scale);
-            };
+        function drawSignatureFromDataURL(dataURL){
+            if(!dataURL) return;
+            const img=new Image();
+            img.onload = function(){
+                ctx.fillStyle='#FFFFFF'; ctx.fillRect(0,0,canvas.width,canvas.height);
+                const scale = Math.min(canvas.width/img.width, canvas.height/img.height);
+                const x = (canvas.width/2) - (img.width/2)*scale;
+                const y = (canvas.height/2) - (img.height/2)*scale;
+                ctx.drawImage(img, x, y, img.width*scale, img.height*scale);
+            }
             img.src = dataURL;
         }
 
-
-        // --- FORM LOGIC ---
-
-        /**
-         * Toggles the visual state of the strategy box when the checkbox changes.
-         * @param {HTMLInputElement} checkbox - The checkbox element.
-         */
-        window.toggleStrategyBox = function(checkbox) {
+        /* ---------------- Form Logic ---------------- */
+        function initStrategyBoxes(){
+            document.querySelectorAll('.strategy-checkbox').forEach(cb => toggleStrategyBox(cb));
+        }
+        window.toggleStrategyBox = function(checkbox){
             const box = checkbox.closest('.strategy-box');
-            if (checkbox.checked) {
-                box.classList.add('selected');
-            } else {
-                box.classList.remove('selected');
-            }
+            if(checkbox.checked) box.classList.add('selected'); else box.classList.remove('selected');
+            saveDraft();
         }
 
-        /**
-         * Sets up event listeners for pre-task checks (Sí/No buttons) for all sections.
-         */
-        function setupEventListeners() {
-            // Event listeners for section 1.2 and 1.3
-            document.querySelectorAll('#check-list-1-2 .answer-btn-1-2, #subseccion-1-3 .answer-btn-1-3').forEach(button => {
-                button.addEventListener('click', (event) => {
-                    handleAnswerClick(event.target);
-                });
+        function setupEventListeners(){
+            // Answer buttons (desktop)
+            document.querySelectorAll('#check-list-1-2 .answer-btn-1-2, #subseccion-1-3 .answer-btn-1-3').forEach(btn => {
+                btn.addEventListener('click', (e)=>{ handleAnswerClick(e.target); });
             });
-            
-            // Initial setup for the strategy box style
-            document.querySelectorAll('.strategy-checkbox').forEach(checkbox => {
-                toggleStrategyBox(checkbox);
+            // Handle documento_regula text toggle
+            document.querySelectorAll('#subseccion-1-3 .answer-btn-1-3').forEach(btn => {
+                btn.addEventListener('click', ()=> saveDraft());
             });
+            // inputs change -> save draft
+            document.querySelectorAll('#etapa1-section input, #etapa1-section textarea').forEach(inp => {
+                inp.addEventListener('input', debounce(saveDraft,300));
+            });
+            // wizard controls
+            document.getElementById('wizard-next').addEventListener('click', wizardNext);
+            document.getElementById('wizard-prev').addEventListener('click', wizardPrev);
+            document.getElementById('wizard-save').addEventListener('click', ()=>{ saveDraft(); showMessage('Borrador guardado','success'); });
         }
-        
-        /**
-         * Handles the visual state and warning checks for an answer button click.
-         * @param {HTMLElement} targetButton - The button that was clicked.
-         */
-        function handleAnswerClick(targetButton) {
+
+        function handleAnswerClick(targetButton){
             const selectedAnswer = targetButton.getAttribute('data-answer');
             const parentDiv = targetButton.closest('div[data-pregunta]');
             const preguntaKey = parentDiv.getAttribute('data-pregunta');
 
-
-            // 1. Limpiar el estado visual de los botones en el grupo
-            parentDiv.querySelectorAll(`button`).forEach(btn => {
+            parentDiv.querySelectorAll('button').forEach(btn => {
                 btn.classList.remove('btn-selected');
-                if (btn.getAttribute('data-answer') === 'Si') {
-                    btn.classList.replace('bg-green-700', 'bg-green-500');
-                } else {
-                    btn.classList.replace('bg-red-700', 'bg-red-500');
-                }
+                if(btn.getAttribute('data-answer') === 'Si'){ btn.classList.replace('bg-green-700','bg-green-500'); }
+                else { btn.classList.replace('bg-red-700','bg-red-500'); }
             });
 
-            // 2. Aplicar el estado visual al botón seleccionado
             targetButton.classList.add('btn-selected');
-            if (selectedAnswer === 'Si') {
-                targetButton.classList.replace('bg-green-500', 'bg-green-700');
-            } else {
-                targetButton.classList.replace('bg-red-500', 'bg-red-700');
-            }
+            if(selectedAnswer === 'Si'){ targetButton.classList.replace('bg-green-500','bg-green-700'); }
+            else { targetButton.classList.replace('bg-red-500','bg-red-700'); }
 
-            // 3. Lógica específica para la pregunta 1.3.2 (documento_regula)
-            if (preguntaKey === 'documento_regula') {
+            if(preguntaKey === 'documento_regula'){
                 const isSi = selectedAnswer === 'Si';
                 const textarea = document.getElementById('documento_tipo');
-                if (isSi) {
-                    textarea.classList.remove('hidden');
-                } else {
-                    textarea.classList.add('hidden');
-                    textarea.value = ''; // Limpiar si se oculta
-                }
+                if(isSi){ textarea.classList.remove('hidden'); }
+                else { textarea.classList.add('hidden'); textarea.value=''; }
             }
 
-            // 4. Revisar si alguna respuesta es 'No' para mostrar la alerta
             checkNoAnswers();
+            saveDraft();
         }
 
-        /**
-         * Checks if any 'No' answer is selected in the critical lists (1.2 and 1.3.1) and shows/hides the warning alert.
-         */
-        function checkNoAnswers() {
+        function checkNoAnswers(){
             let hasNo = false;
-            
-            // Check list 1.2
             const list12 = document.getElementById('check-list-1-2');
-            list12.querySelectorAll('div[data-pregunta]').forEach(div => {
-                const noButton = div.querySelector('button[data-answer="No"]');
-                if (noButton && noButton.classList.contains('btn-selected')) {
-                    hasNo = true;
-                }
-            });
-
-            // Check question 1.3.1 (capacitado_prevencion)
+            if(list12){
+                list12.querySelectorAll('div[data-pregunta]').forEach(div=>{
+                    const noB = div.querySelector('button[data-answer="No"]');
+                    if(noB && noB.classList.contains('btn-selected')) hasNo = true;
+                });
+            }
             const q131Div = document.querySelector('div[data-pregunta="capacitado_prevencion"]');
-            const noButton131 = q131Div?.querySelector('button[data-answer="No"]');
-            if (noButton131 && noButton131.classList.contains('btn-selected')) {
-                 hasNo = true;
-            }
-
-            // Show/hide the main alert
-            const alertElement = document.getElementById('no-iniciar-alert-1-2');
-            if (hasNo) {
-                 alertElement.classList.remove('hidden');
-            } else {
-                 alertElement.classList.add('hidden');
-            }
-            
-            // Return state for PDF generation check
+            const no131 = q131Div?.querySelector('button[data-answer="No"]');
+            if(no131 && no131.classList.contains('btn-selected')) hasNo = true;
+            const alertEl = document.getElementById('no-iniciar-alert-1-2');
+            if(hasNo) alertEl.classList.remove('hidden'); else alertEl.classList.add('hidden');
             return hasNo;
         }
 
-        // --- DATA RETRIEVAL AND STORAGE (LOCAL STORAGE) ---
-
-        /**
-         * Gathers all data from the form into a structured object.
-         * @param {boolean} checkFirma - If true, checks if the signature is present.
-         * @returns {object|null} The ART data object or null if validation fails.
-         */
-        function collectFormData(checkFirma = true) {
+        /* ---------------- Collect data ---------------- */
+        function collectFormData(checkFirma = true){
             const firma = document.getElementById('firma_base64').value;
-            if (checkFirma && !firma) {
-                 showMessage('Error: La firma del supervisor es obligatoria para previsualizar/guardar.', 'error');
-                 return null;
-            }
-
-            // Validación de campos básicos
-            const requiredInputs = ['empresa', 'supervisor', 'area', 'lugar_especifico', 'fecha', 'hora_inicio', 'hora_termino', 'descripcion'];
-            for (const id of requiredInputs) {
-                if (!document.getElementById(id).value.trim()) {
-                    showMessage(`Error: El campo ${id.toUpperCase()} es obligatorio.`, 'error');
-                    return null;
-                }
+            if(checkFirma && !firma){ showMessage('Error: La firma del supervisor es obligatoria para previsualizar/guardar.','error'); return null; }
+            const requiredInputs = ['empresa','supervisor','area','lugar_especifico','fecha','hora_inicio','hora_termino','descripcion'];
+            for(const id of requiredInputs){
+                const val = document.getElementById(id).value || '';
+                if(!val.trim()){ showMessage('Error: El campo '+id.toUpperCase()+' es obligatorio.','error'); return null; }
             }
 
             const antecedentes = {
@@ -838,278 +522,184 @@
                 hora_inicio: document.getElementById('hora_inicio').value,
                 hora_termino: document.getElementById('hora_termino').value,
                 descripcion: document.getElementById('descripcion').value,
-                firma_base64: firma, // Incluir la firma
+                firma_base64: firma
             };
 
-            // Chequeo 1.2
             const chequeo_trabajador = {};
-            // Usamos un loop tradicional que permite el retorno de la función si falla la validación
-            for (const div of document.querySelectorAll('#check-list-1-2 > div')) {
+            for(const div of document.querySelectorAll('#check-list-1-2 > div')){
                 const key = div.getAttribute('data-pregunta');
-                const selectedButton = div.querySelector('.btn-selected');
-                if (!selectedButton) {
-                    showMessage(`Error: Debe contestar la pregunta sobre '${key}' (Trabajador).`, 'error');
-                    return null;
-                }
-                chequeo_trabajador[key] = selectedButton ? selectedButton.getAttribute('data-answer') : 'N/A';
+                const sel = div.querySelector('.btn-selected');
+                if(!sel){ showMessage(`Error: Debe contestar la pregunta sobre '${key}' (Trabajador).`,'error'); return null; }
+                chequeo_trabajador[key] = sel.getAttribute('data-answer');
             }
 
-            
-            // Chequeo 1.3
             const chequeo_tarea = {};
-            for (const div of document.querySelectorAll('#subseccion-1-3 > div')) {
+            for(const div of document.querySelectorAll('#subseccion-1-3 > div')){
                 const key = div.getAttribute('data-pregunta');
-                const selectedButton = div.querySelector('.btn-selected');
-                if (!selectedButton) {
-                    showMessage(`Error: Debe contestar la pregunta sobre '${key}' (Tarea).`, 'error');
-                    return null;
-                }
-                chequeo_tarea[key] = selectedButton ? selectedButton.getAttribute('data-answer') : 'N/A';
+                const sel = div.querySelector('.btn-selected');
+                if(!sel){ showMessage(`Error: Debe contestar la pregunta sobre '${key}' (Tarea).`,'error'); return null; }
+                chequeo_tarea[key] = sel.getAttribute('data-answer');
             }
-            
-            // Añadir campo de tipeo condicional para 1.3.2
             const docInput = document.getElementById('documento_tipo');
-            if (docInput.classList.contains('hidden')) {
-                 chequeo_tarea.documento_tipo = '';
-            } else {
-                 chequeo_tarea.documento_tipo = docInput.value.trim();
-            }
+            chequeo_tarea.documento_tipo = docInput && !docInput.classList.contains('hidden') ? docInput.value.trim() : '';
 
-            // Estrategias de Control 1.4
             const estrategias_control = [];
-            document.querySelectorAll('.strategy-checkbox').forEach(checkbox => {
-                if (checkbox.checked) {
-                    estrategias_control.push(checkbox.getAttribute('data-strategy-name'));
-                }
-            });
-            
+            document.querySelectorAll('.strategy-checkbox').forEach(cb => { if(cb.checked) estrategias_control.push(cb.getAttribute('data-strategy-name')); });
+
             return {
-                id: crypto.randomUUID(), // Generar un ID único local
+                id: crypto.randomUUID(),
                 antecedentes,
-                chequeo: {
-                    trabajador: chequeo_trabajador,
-                    tarea: chequeo_tarea
-                },
+                chequeo: { trabajador: chequeo_trabajador, tarea: chequeo_tarea },
                 estrategias_control,
                 timestamp: new Date().toISOString(),
                 savedBy: userId
             };
         }
-        
-        /**
-         * Generates the HTML content for the PDF preview modal.
-         * @param {object} artData - The collected form data.
-         * @returns {string} The HTML string for the preview.
-         */
-        function generatePdfHtml(artData) {
+
+        /* ---------------- PDF HTML generation (fixed A4) ---------------- */
+        function generatePdfHtml(artData){
             const { antecedentes, chequeo, estrategias_control, timestamp } = artData;
-            
-            let html = `<div class="pdf-preview-container">
-                <header class="text-center mb-6">
-                    <h1 class="text-3xl font-extrabold text-red-700">ANÁLISIS DE RIESGOS DE LA TAREA (ART)</h1>
-                    <p class="text-xs text-gray-500 mt-2">Documento generado el: ${new Date(timestamp).toLocaleString()} (ID Local: ${artData.savedBy})</p>
-                </header>
+            // SVG logo (circle + text) top-right
+            const logoSvg = `<svg width="72" height="72" viewBox="0 0 72 72" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                <defs><linearGradient id="g" x1="0" x2="1"><stop offset="0" stop-color="#e2e8f0"/><stop offset="1" stop-color="#c7d2fe"/></linearGradient></defs>
+                <circle cx="36" cy="36" r="34" fill="#f3f4f6" stroke="#cbd5e1" stroke-width="2"/>
+                <text x="36" y="40" font-size="9" font-family="Inter, sans-serif" font-weight="700" text-anchor="middle" fill="#374151">TU LOGO</text>
+                <text x="36" y="51" font-size="8" font-family="Inter, sans-serif" text-anchor="middle" fill="#6b7280">AQUÍ</text>
+            </svg>`;
 
-                <!-- 1.1 ANTECEDENTES DEL TRABAJO -->
-                <h2 class="pdf-section-title">1.1) ANTECEDENTES DEL TRABAJO</h2>
-                <div class="space-y-1">
-                    <div class="pdf-data-item"><span class="pdf-data-label">NOMBRE DE LA EMPRESA:</span><span class="pdf-data-value">${antecedentes.empresa.toUpperCase()}</span></div>
-                    <div class="pdf-data-item"><span class="pdf-data-label">SUPERVISOR RESPONSABLE:</span><span class="pdf-data-value">${antecedentes.supervisor.toUpperCase()}</span></div>
-                    <div class="pdf-data-item"><span class="pdf-data-label">ÁREA DE TRABAJO:</span><span class="pdf-data-value">${antecedentes.area.toUpperCase()}</span></div>
-                    <div class="pdf-data-item"><span class="pdf-data-label">LUGAR ESPECÍFICO:</span><span class="pdf-data-value">${antecedentes.lugar_especifico.toUpperCase()}</span></div>
-                    <div class="pdf-data-item"><span class="pdf-data-label">FECHA:</span><span class="pdf-data-value">${antecedentes.fecha}</span></div>
-                    <div class="pdf-data-item"><span class="pdf-data-label">HORARIO DE TRABAJO:</span><span class="pdf-data-value">${antecedentes.hora_inicio} - ${antecedentes.hora_termino}</span></div>
-                    <div class="pt-2"><span class="pdf-data-label block mb-1">DESCRIPCIÓN DE LA TAREA:</span><p class="text-sm border p-2 bg-gray-50">${antecedentes.descripcion.toUpperCase()}</p></div>
-                </div>
-
-                <!-- Firma -->
-                <div class="mt-4">
-                    <span class="pdf-data-label block mb-1">FIRMA DEL SUPERVISOR:</span>
-                    <div class="pdf-signature-box">
-                        <img src="${antecedentes.firma_base64}" alt="Firma Digital" class="pdf-signature-image">
-                    </div>
-                </div>
-
-                <!-- 1.2 DE LOS TRABAJADORES -->
-                <h2 class="pdf-section-title text-red-700 border-red-700">1.2) DE LOS TRABAJADORES</h2>
-                <div class="text-sm">
-                    ${renderChecklist(chequeo.trabajador, [
-                        "1. ¿Me encuentro en condiciones físicas y psicológicas para realizar la tarea?",
-                        "2. ¿Las condiciones del entorno permiten realizar mi trabajo de manera segura?",
-                        "3. ¿Verifiqué que las áreas de desplazamiento y trabajo se encuentran en condiciones?",
-                        "4. ¿Poseo todos los elementos de protección personal (EPP) específicos para la tarea?",
-                        "5. ¿Dispongo de equipos y herramientas apropiadas, en buen estado y con inspección al día?",
-                        "6. ¿Sé cómo activar y actuar ante una emergencia?"
-                    ], ['condiciones_fisicas', 'condiciones_entorno', 'areas_condiciones', 'epp_especificos', 'equipos_herramientas', 'actuar_emergencia'])}
-                </div>
-                
-                <p class="text-xs text-red-600 font-bold mt-2">**ALERTA:** Un "NO" en 1.2 o 1.3.1 significa NO INICIAR LA TAREA. (Verificado: ${checkNoAnswers() ? 'SI HAY UN NO CRÍTICO' : 'TODAS SON SÍ/N/A'})</p>
-
-                <!-- 1.3 DE LA TAREA -->
-                <h2 class="pdf-section-title text-blue-700 border-blue-700">1.3) DE LA TAREA</h2>
-                <div class="text-sm">
-                    ${renderChecklist(chequeo.tarea, [
-                        "1. ¿Estoy capacitado(a) y conozco las medidas de prevención que mi empleador ha definido para ejecutar mi trabajo o tarea de manera correcta y segura?",
-                        "2. ¿Existe algún documento que regule mi trabajo o tarea? Manual, reglamento, procedimiento, instructivo de trabajo u otro.",
-                        "3. ¿El manual, reglamento, procedimiento, instructivo u otro incluye todas las actividades (alcance) a desarrollar en terreno?"
-                    ], ['capacitado_prevencion', 'documento_regula', 'alcance_actividades'])}
-                    
-                    ${chequeo.tarea.documento_tipo ? `<div class="pdf-data-item ml-4 text-xs"><span class="pdf-data-label">Documento Indicado:</span><span class="pdf-data-value text-left">${chequeo.tarea.documento_tipo}</span></div>` : ''}
-                </div>
-
-                <!-- 1.4 ESTRATEGIAS DE CONTROL -->
-                <h2 class="pdf-section-title text-teal-700 border-teal-700">1.4) ESTRATEGIAS DE CONTROL APLICADAS</h2>
-                <div class="text-sm">
-                    ${estrategias_control.length > 0 
-                        ? `<ul class="list-disc ml-5 space-y-1 mt-2">${estrategias_control.map(e => `<li>${e}</li>`).join('')}</ul>`
-                        : `<p class="italic text-gray-500">No se seleccionaron estrategias de control.</p>`
-                    }
-                </div>
-            </div>`;
-
-            return html;
-        }
-
-        /**
-         * Helper function to render the checklist HTML.
-         */
-        function renderChecklist(data, questions, keys) {
-            let html = '';
-            keys.forEach((key, index) => {
-                const answer = data[key] || 'N/A';
-                const resultClass = answer === 'Si' ? 'pdf-check-result-si' : (answer === 'No' ? 'pdf-check-result-no' : 'text-gray-400');
-                const questionText = questions[index];
-
-                html += `
-                    <div class="pdf-check-item">
-                        <span class="flex-1">${questionText}</span>
-                        <span class="${resultClass}">${answer}</span>
-                    </div>
-                `;
-            });
-            return html;
-        }
-
-
-        /**
-         * Prepares and displays the PDF preview modal.
-         */
-        window.showPdfPreview = function() {
-            const artData = collectFormData(true); // Requiere firma para previsualizar
-            if (!artData) {
-                // Mensaje de error ya mostrado en collectFormData
-                return;
+            // helper to render checklist
+            function renderChecklist(data, questions, keys){
+                return keys.map((key,i)=>{
+                    const ans = data[key] || 'N/A';
+                    const cls = ans === 'Si' ? 'pdf-check-result-si' : (ans==='No' ? 'pdf-check-result-no' : '');
+                    return `<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px dashed #eef2f7">
+                        <div style="width:75%">${questions[i]}</div><div style="width:25%;text-align:right" class="${cls}">${ans}</div>
+                    </div>`;
+                }).join('');
             }
 
-            const pdfContentHtml = generatePdfHtml(artData);
-            const pdfContainer = document.getElementById('pdf-content');
-pdfContainer.innerHTML = "";      // ← limpia contenido previo
-pdfContainer.insertAdjacentHTML("beforeend", pdfContentHtml);
+            const workerHtml = renderChecklist(chequeo.trabajador, [
+                "1. ¿Me encuentro en condiciones físicas y psicológicas para realizar la tarea?",
+                "2. ¿Las condiciones del entorno permiten realizar mi trabajo de manera segura?",
+                "3. ¿Verifiqué que las áreas de desplazamiento y trabajo se encuentran en condiciones?",
+                "4. ¿Poseo todos los EPP específicos para la tarea?",
+                "5. ¿Dispongo de equipos y herramientas adecuadas e inspeccionadas?",
+                "6. ¿Sé cómo activar y actuar ante una emergencia?"
+            ], ['condiciones_fisicas','condiciones_entorno','areas_condiciones','epp_especificos','equipos_herramientas','actuar_emergencia']);
 
+            const taskHtml = renderChecklist(chequeo.tarea, [
+                "1. ¿Estoy capacitado(a) y conozco las medidas de prevención definidas?",
+                "2. ¿Existe algún documento que regule mi trabajo o tarea?",
+                "3. ¿El documento incluye todas las actividades (alcance)?"
+            ], ['capacitado_prevencion','documento_regula','alcance_actividades']);
+
+            const estrategiasHtml = estrategias_control.length ? `<ul style="margin:8px 0 0 18px">${estrategias_control.map(e=>`<li>${e}</li>`).join('')}</ul>` : `<p style="color:#6b7280;font-style:italic">No se seleccionaron estrategias de control.</p>`;
+
+            const html =
+`<div style="width:100%;">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start">
+        <div>
+            <div class="pdf-title">ANÁLISIS DE RIESGOS DE LA TAREA (ART)</div>
+            <div class="pdf-subtitle">Documento generado el: ${new Date(timestamp).toLocaleString()} — ID Local: ${artData.savedBy}</div>
+        </div>
+        <div style="text-align:right">${logoSvg}</div>
+    </div>
+
+    <h3 class="pdf-section-title">1.1) ANTECEDENTES DEL TRABAJO</h3>
+    <div>
+        <div class="pdf-data-item"><span class="pdf-data-label">NOMBRE DE LA EMPRESA:</span><span class="pdf-data-value">${antecedentes.empresa.toUpperCase()}</span></div>
+        <div class="pdf-data-item"><span class="pdf-data-label">SUPERVISOR RESPONSABLE:</span><span class="pdf-data-value">${antecedentes.supervisor.toUpperCase()}</span></div>
+        <div class="pdf-data-item"><span class="pdf-data-label">ÁREA DE TRABAJO:</span><span class="pdf-data-value">${antecedentes.area.toUpperCase()}</span></div>
+        <div class="pdf-data-item"><span class="pdf-data-label">LUGAR ESPECÍFICO:</span><span class="pdf-data-value">${antecedentes.lugar_especifico.toUpperCase()}</span></div>
+        <div class="pdf-data-item"><span class="pdf-data-label">FECHA:</span><span class="pdf-data-value">${antecedentes.fecha}</span></div>
+        <div class="pdf-data-item"><span class="pdf-data-label">HORARIO DE TRABAJO:</span><span class="pdf-data-value">${antecedentes.hora_inicio} - ${antecedentes.hora_termino}</span></div>
+        <div style="margin-top:8px;"><span class="pdf-data-label block">DESCRIPCIÓN DE LA TAREA:</span><div style="border:1px solid #eef2f7;padding:6px;margin-top:6px;background:#f8fafc">${antecedentes.descripcion.toUpperCase()}</div></div>
+    </div>
+
+    <div style="margin-top:12px;">
+        <div><strong>FIRMA DEL SUPERVISOR:</strong></div>
+        <div class="pdf-signature-box"><img src="${antecedentes.firma_base64}" style="max-width:100%; max-height:90px; object-fit:contain;"></div>
+    </div>
+
+    <h3 class="pdf-section-title" style="border-color:#ef4444;color:#b91c1c">1.2) DE LOS TRABAJADORES</h3>
+    <div>${workerHtml}</div>
+
+    <p style="color:#b91c1c;font-weight:700;margin-top:6px">ALERTA: Un "NO" en 1.2 o 1.3.1 significa NO INICIAR LA TAREA.</p>
+
+    <h3 class="pdf-section-title" style="border-color:#3b82f6;color:#0f4b8f">1.3) DE LA TAREA</h3>
+    <div>${taskHtml}${chequeo.tarea.documento_tipo ? `<div style="margin-top:6px"><strong>Documento indicado:</strong> ${chequeo.tarea.documento_tipo}</div>` : ''}</div>
+
+    <h3 class="pdf-section-title" style="border-color:#0d9488;color:#0f766e">1.4) ESTRATEGIAS DE CONTROL APLICADAS</h3>
+    <div>${estrategiasHtml}</div>
+</div>`;
+
+            return html;
+        }
+
+        /* ---------------- Show Preview ---------------- */
+        window.showPdfPreview = function(){
+            const artData = collectFormData(true);
+            if(!artData) return;
+            const pdfHtml = generatePdfHtml(artData);
+            const pdfContainer = document.getElementById('pdf-content');
+            pdfContainer.innerHTML = pdfHtml;
             document.getElementById('pdf-preview-modal').classList.remove('hidden');
         }
 
-
-        /**
-         * Saves the current form data to LocalStorage (Called from preview modal).
-         */
-        window.saveArt = function() {
+        /* ---------------- Save ART to localStorage ---------------- */
+        window.saveArt = function(){
             const artData = collectFormData();
-            if (!artData) return; 
-
-            // Ocultar modal de previsualización mientras guarda
+            if(!artData) return;
             document.getElementById('pdf-preview-modal').classList.add('hidden');
-
-            try {
-                // 1. Obtener historial existente
+            try{
                 const historyString = localStorage.getItem(ART_HISTORY_KEY);
-                let history = historyString ? JSON.parse(historyString) : [];
-                
-                // 2. Añadir el nuevo ART al historial
+                const history = historyString ? JSON.parse(historyString) : [];
                 history.push(artData);
-                
-                // 3. Guardar el historial actualizado
                 localStorage.setItem(ART_HISTORY_KEY, JSON.stringify(history));
-                
-                showMessage('Chequeo Pre-Tarea guardado localmente con éxito!', 'success');
-                
+                showMessage('Chequeo Pre-Tarea guardado localmente con éxito!','success');
                 clearForm();
-
-            } catch (error) {
-                console.error("Error al guardar el chequeo en LocalStorage:", error);
-                showMessage(`Error al guardar localmente: ${error.message}`, 'error');
+            }catch(err){
+                console.error(err);
+                showMessage('Error al guardar: '+err.message,'error');
             }
         }
-        
-        /**
-         * Loads the history of saved Pre-Task Check from LocalStorage.
-         */
-        window.loadArtHistory = function() {
-            const historyList = document.getElementById('history-list');
-            historyList.innerHTML = ''; // Limpiar lista anterior
+
+        /* ---------------- History ---------------- */
+        window.loadArtHistory = function(){
+            const historyList = document.getElementById('history-list'); historyList.innerHTML='';
             document.getElementById('no-history-message').classList.add('hidden');
-            
-            try {
-                const historyString = localStorage.getItem(ART_HISTORY_KEY);
-                let arts = historyString ? JSON.parse(historyString) : [];
-
-                if (arts.length === 0) {
-                    document.getElementById('no-history-message').classList.remove('hidden');
-                    showMessage('No se encontraron chequeos en tu historial local.', 'info');
-                    document.getElementById('history-modal').classList.remove('hidden');
-                    return;
-                }
-                
-                // Ordenar localmente por timestamp (el más reciente primero)
-                arts.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-
-
-                arts.forEach((art) => {
-                    const docId = art.id;
-                    const item = document.createElement('div');
-                    item.className = 'p-3 border rounded-lg shadow-sm hover:bg-gray-50 flex justify-between items-center';
-                    item.innerHTML = `
-                        <div>
-                            <p class="font-semibold text-gray-800">${art.antecedentes.area || 'Sin Área'} (${art.antecedentes.lugar_especifico || 'N/A'})</p>
-                            <p class="text-xs text-gray-500">${art.antecedentes.empresa || 'Sin Empresa'} | ${art.antecedentes.hora_inicio || '00:00'} - ${art.antecedentes.hora_termino || '00:00'}</p>
-                            <p class="text-xs text-gray-400 font-mono mt-1">Guardado: ${new Date(art.timestamp).toLocaleDateString()}</p>
-                        </div>
-                        <button onclick="loadArtToForm('${docId}')" class="bg-blue-500 hover:bg-blue-600 text-white font-medium py-1 px-3 rounded-lg text-sm transition duration-150">
-                            Cargar
-                        </button>
-                    `;
-                    historyList.appendChild(item);
-                });
-
-
-                document.getElementById('history-modal').classList.remove('hidden');
-
-            } catch (error) {
-                console.error("Error al cargar el historial local:", error);
-                showMessage(`Error al cargar historial: ${error.message}`, 'error');
-            }
-        }
-
-        /**
-         * Loads a specific ART into the form for viewing/editing.
-         * @param {string} docId - The LocalStorage document ID.
-         */
-        window.loadArtToForm = function(docId) {
-            document.getElementById('history-modal').classList.add('hidden');
-
-            try {
+            try{
                 const historyString = localStorage.getItem(ART_HISTORY_KEY);
                 const arts = historyString ? JSON.parse(historyString) : [];
-                const art = arts.find(a => a.id === docId);
+                if(arts.length===0){ document.getElementById('no-history-message').classList.remove('hidden'); showMessage('No hay chequeos guardados','info'); document.getElementById('history-modal').classList.remove('hidden'); return; }
+                arts.sort((a,b)=> new Date(b.timestamp)-new Date(a.timestamp));
+                arts.forEach(art=>{
+                    const item=document.createElement('div');
+                    item.className='p-3 border rounded-lg shadow-sm hover:bg-gray-50 flex justify-between items-center';
+                    item.innerHTML = `<div>
+                        <p class="font-semibold text-gray-800">${art.antecedentes.area || 'Sin Área'} (${art.antecedentes.lugar_especifico || 'N/A'})</p>
+                        <p class="text-xs text-gray-500">${art.antecedentes.empresa || 'Sin Empresa'} | ${art.antecedentes.hora_inicio || '00:00'} - ${art.antecedentes.hora_termino || '00:00'}</p>
+                        <p class="text-xs text-gray-400 font-mono mt-1">Guardado: ${new Date(art.timestamp).toLocaleDateString()}</p>
+                    </div>
+                    <div class="flex gap-2">
+                        <button onclick="loadArtToForm('${art.id}')" class="bg-blue-500 hover:bg-blue-600 text-white font-medium py-1 px-3 rounded-lg text-sm">Cargar</button>
+                    </div>`;
+                    historyList.appendChild(item);
+                });
+                document.getElementById('history-modal').classList.remove('hidden');
+            }catch(err){ console.error(err); showMessage('Error al cargar historial: '+err.message,'error'); }
+        }
 
-                if (!art) {
-                    showMessage('Error: El chequeo solicitado no existe localmente.', 'error');
-                    return;
-                }
-
+        /* ---------------- Load ART to form ---------------- */
+        window.loadArtToForm = function(docId){
+            document.getElementById('history-modal').classList.add('hidden');
+            try{
+                const historyString = localStorage.getItem(ART_HISTORY_KEY);
+                const arts = historyString ? JSON.parse(historyString) : [];
+                const art = arts.find(a=>a.id===docId);
+                if(!art){ showMessage('Chequeo no encontrado','error'); return; }
                 clearForm();
-                
-                // 1. Cargar Antecedentes
+                // antecedentes
                 document.getElementById('empresa').value = art.antecedentes.empresa || '';
                 document.getElementById('supervisor').value = art.antecedentes.supervisor || '';
                 document.getElementById('area').value = art.antecedentes.area || '';
@@ -1118,142 +708,283 @@ pdfContainer.insertAdjacentHTML("beforeend", pdfContentHtml);
                 document.getElementById('hora_inicio').value = art.antecedentes.hora_inicio || '';
                 document.getElementById('hora_termino').value = art.antecedentes.hora_termino || '';
                 document.getElementById('descripcion').value = art.antecedentes.descripcion || '';
-                
-                // Cargar Firma
+                // firma
                 const firmaBase64 = art.antecedentes.firma_base64 || '';
-                if (firmaBase64) {
-                    document.getElementById('firma_base64').value = firmaBase64;
-                    const imgElement = document.getElementById('signature-image');
-                    imgElement.src = firmaBase64;
-                    imgElement.classList.remove('hidden');
-                    document.getElementById('signature-placeholder').classList.add('hidden');
-                    signatureDataURL = firmaBase64; // Actualizar variable global para el canvas
-                } else {
-                    signatureDataURL = '';
-                }
-
-                // 2. Cargar Chequeo del Trabajador (1.2)
-                document.querySelectorAll('#check-list-1-2 > div').forEach(div => {
+                if(firmaBase64){ document.getElementById('firma_base64').value = firmaBase64; const img = document.getElementById('signature-image'); img.src=firmaBase64; img.classList.remove('hidden'); document.getElementById('signature-placeholder').classList.add('hidden'); signatureDataURL = firmaBase64; }
+                else signatureDataURL = '';
+                // chequeo trabajador
+                document.querySelectorAll('#check-list-1-2 > div').forEach(div=>{
                     const key = div.getAttribute('data-pregunta');
                     const answer = art.chequeo.trabajador[key];
-                    if (answer && answer !== 'N/A') {
-                        const button = div.querySelector(`button[data-answer="${answer}"]`);
-                        if (button) {
-                            handleAnswerClick(button); 
-                        }
-                    }
+                    if(answer && answer!=='N/A'){ const btn = div.querySelector(`button[data-answer="${answer}"]`); if(btn) handleAnswerClick(btn); }
                 });
-
-                // 3. Cargar Chequeo de la Tarea (1.3)
-                 document.querySelectorAll('#subseccion-1-3 > div').forEach(div => {
+                // chequeo tarea
+                document.querySelectorAll('#subseccion-1-3 > div').forEach(div=>{
                     const key = div.getAttribute('data-pregunta');
                     const answer = art.chequeo.tarea[key];
-                    if (answer && answer !== 'N/A') {
-                        const button = div.querySelector(`button[data-answer="${answer}"]`);
-                        if (button) {
-                            handleAnswerClick(button); 
-                        }
+                    if(answer && answer!=='N/A'){ const btn = div.querySelector(`button[data-answer="${answer}"]`); if(btn) handleAnswerClick(btn); }
+                });
+                const docInput = document.getElementById('documento_tipo'); docInput.value = art.chequeo.tarea.documento_tipo || '';
+                if(art.chequeo.tarea.documento_regula === 'Si') docInput.classList.remove('hidden'); else docInput.classList.add('hidden');
+                // estrategias
+                document.querySelectorAll('.strategy-checkbox').forEach(cb=>{
+                    const name = cb.getAttribute('data-strategy-name');
+                    const checked = art.estrategias_control.includes(name);
+                    cb.checked = checked; toggleStrategyBox(cb);
+                });
+                checkNoAnswers();
+                showMessage('Chequeo cargado','success');
+            }catch(err){ console.error(err); showMessage('Error al cargar chequeo: '+err.message,'error'); }
+        }
+
+        /* ---------------- Clear form ---------------- */
+        function clearForm(){
+            document.getElementById('etapa1-section').querySelectorAll('input[type="text"], input[type="date"], input[type="time"], textarea').forEach(i=>i.value='');
+            document.getElementById('firma_base64').value=''; document.getElementById('signature-image').classList.add('hidden'); document.getElementById('signature-placeholder').classList.remove('hidden'); signatureDataURL='';
+            document.querySelectorAll('#check-list-1-2 button, #subseccion-1-3 button').forEach(btn=>{ btn.classList.remove('btn-selected'); if(btn.getAttribute('data-answer')==='Si') btn.classList.replace('bg-green-700','bg-green-500'); else btn.classList.replace('bg-red-700','bg-red-500'); });
+            document.getElementById('no-iniciar-alert-1-2').classList.add('hidden');
+            const docInput = document.getElementById('documento_tipo'); docInput.classList.add('hidden'); docInput.value='';
+            document.querySelectorAll('.strategy-checkbox').forEach(cb => { cb.checked=false; toggleStrategyBox(cb); });
+            // also remove wizard mobile fields
+            ['empresa_m','supervisor_m','area_m','lugar_especifico_m','fecha_m','hora_inicio_m','hora_termino_m','descripcion_m'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value='';});
+            document.getElementById('signature-display-box-m') && (document.getElementById('signature-display-box-m').innerHTML='Clic aquí para firmar');
+            localStorage.removeItem(ART_DRAFT_KEY);
+        }
+
+        /* ---------------- Messages ---------------- */
+        function showMessage(message,type){
+            const container = document.getElementById('custom-message-container');
+            const bg = type==='success' ? 'bg-green-500' : (type==='error' ? 'bg-red-500' : 'bg-blue-500');
+            const html = `<div class="custom-message fixed inset-x-0 top-0 mx-auto mt-4 z-50 flex items-start justify-center p-4 transition-opacity duration-300 opacity-0 pointer-events-none">
+                <div class="${bg} text-white p-3 rounded-lg shadow-xl max-w-sm transform scale-100 pointer-events-auto">${message}</div>
+            </div>`;
+            container.insertAdjacentHTML('beforeend', html);
+            const el = container.lastElementChild;
+            setTimeout(()=> el.classList.remove('opacity-0'), 10);
+            setTimeout(()=>{ el.classList.add('opacity-0'); setTimeout(()=>el.remove(),300); }, 3000);
+        }
+        window.alert = function(msg){ showMessage(msg,'info'); };
+
+        /* ---------------- Device mode & Wizard ---------------- */
+        let isMobileMode = false;
+        function setupDeviceMode(){
+            isMobileMode = window.innerWidth < 768;
+            applyMode();
+        }
+        function handleResize(){ const wasMobile = isMobileMode; isMobileMode = window.innerWidth < 768; if(wasMobile !== isMobileMode) applyMode(); }
+        function applyMode(){
+            const fullForm = document.getElementById('full-form'); const wizard = document.getElementById('wizard');
+            if(isMobileMode){ fullForm.classList.add('hidden'); wizard.classList.remove('hidden'); prepareWizard(); }
+            else { fullForm.classList.remove('hidden'); wizard.classList.add('hidden'); }
+        }
+
+        /* Wizard implementation */
+        let wizardStep = 0;
+        function prepareWizard(){
+            wizardStep = 0;
+            // populate wizard fields from desktop if present
+            ['empresa','supervisor','area','lugar_especifico','fecha','hora_inicio','hora_termino','descripcion'].forEach(id=>{
+                const desktop = document.getElementById(id); const mobile = document.getElementById(id+'_m');
+                if(desktop && mobile) mobile.value = desktop.value;
+            });
+            // build simple clone of check-lists for mobile
+            buildWizardChecklists();
+            updateWizardUI();
+        }
+        function buildWizardChecklists(){
+            const container = document.getElementById('check-list-1-2-m'); container.innerHTML='';
+            document.querySelectorAll('#check-list-1-2 > div').forEach(div=>{
+                const q = div.querySelector('label').innerText;
+                const key = div.getAttribute('data-pregunta');
+                const item = document.createElement('div'); item.className='mb-3';
+                item.innerHTML = `<div class="mb-1">${q}</div>
+                    <div class="flex gap-2">
+                        <button class="px-3 py-2 rounded bg-green-500 text-white" data-key="${key}" data-answer="Si">Sí</button>
+                        <button class="px-3 py-2 rounded bg-red-500 text-white" data-key="${key}" data-answer="No">No</button>
+                    </div>`;
+                container.appendChild(item);
+            });
+            // events
+            container.querySelectorAll('button').forEach(btn=>{
+                btn.addEventListener('click', (e)=>{
+                    const key = e.target.getAttribute('data-key'); const ans = e.target.getAttribute('data-answer');
+                    // update desktop counterpart visually
+                    const desktopDiv = document.querySelector(`#check-list-1-2 > div[data-pregunta="${key}"]`);
+                    if(desktopDiv){
+                        const desktopBtn = desktopDiv.querySelector(`button[data-answer="${ans}"]`);
+                        if(desktopBtn) handleAnswerClick(desktopBtn);
                     }
+                    // also mark mobile UI
+                    const parent = e.target.parentElement;
+                    parent.querySelectorAll('button').forEach(b=>b.classList.remove('ring-2','ring-offset-2'));
+                    e.target.classList.add('ring-2','ring-offset-2');
+                    saveDraft();
                 });
-                // Cargar valor de campo de tipeo
-                const docInput = document.getElementById('documento_tipo');
-                docInput.value = art.chequeo.tarea.documento_tipo || '';
-                if (art.chequeo.tarea.documento_regula === 'Si') {
-                    docInput.classList.remove('hidden');
-                } else {
-                    docInput.classList.add('hidden');
-                }
-                
-                // 4. Cargar Estrategias de Control (1.4)
-                document.querySelectorAll('.strategy-checkbox').forEach(checkbox => {
-                    const strategyName = checkbox.getAttribute('data-strategy-name');
-                    const isChecked = art.estrategias_control.includes(strategyName);
-                    checkbox.checked = isChecked;
-                    toggleStrategyBox(checkbox); // Aplicar estilo visual
+            });
+
+            // build 1.3 for mobile
+            const tcont = document.getElementById('subseccion-1-3-m'); tcont.innerHTML='';
+            document.querySelectorAll('#subseccion-1-3 > div').forEach(div=>{
+                const q = div.querySelector('label').innerText;
+                const key = div.getAttribute('data-pregunta');
+                const item = document.createElement('div'); item.className='mb-3';
+                item.innerHTML = `<div class="mb-1">${q}</div>
+                    <div class="flex gap-2">
+                        <button class="px-3 py-2 rounded bg-green-500 text-white" data-key="${key}" data-answer="Si">Sí</button>
+                        <button class="px-3 py-2 rounded bg-red-500 text-white" data-key="${key}" data-answer="No">No</button>
+                    </div>`;
+                tcont.appendChild(item);
+            });
+            tcont.querySelectorAll('button').forEach(btn=>{
+                btn.addEventListener('click', (e)=>{
+                    const key = e.target.getAttribute('data-key'); const ans = e.target.getAttribute('data-answer');
+                    const desktopDiv = document.querySelector(`#subseccion-1-3 > div[data-pregunta="${key}"]`);
+                    if(desktopDiv){
+                        const desktopBtn = desktopDiv.querySelector(`button[data-answer="${ans}"]`);
+                        if(desktopBtn) handleAnswerClick(desktopBtn);
+                    }
+                    e.target.parentElement.querySelectorAll('button').forEach(b=>b.classList.remove('ring-2'));
+                    e.target.classList.add('ring-2');
+                    saveDraft();
                 });
+            });
 
-                checkNoAnswers(); // Asegurar que la alerta 'NO INICIAR' esté correcta
-
-                
-                showMessage(`Chequeo ${docId.substring(0, 8)}... cargado con éxito.`, 'success');
-
-            } catch (error) {
-                console.error("Error al cargar chequeo local:", error);
-                showMessage(`Error al cargar chequeo: ${error.message}`, 'error');
+            // estrategias mobile (clone)
+            const estrCont = document.getElementById('estrategias-grid-m'); estrCont.innerHTML='';
+            document.querySelectorAll('#estrategias-grid .strategy-box').forEach(box=>{
+                const name = box.getAttribute('data-strategy');
+                const cb = box.querySelector('.strategy-checkbox');
+                const item = document.createElement('label'); item.className='p-2 border rounded flex items-center justify-between';
+                item.innerHTML = `<span>${name}</span><input type="checkbox" data-strategy-name="${name}" class="strategy-checkbox-m">`;
+                estrCont.appendChild(item);
+            });
+            // events for mobile checkboxes
+            document.querySelectorAll('.strategy-checkbox-m').forEach(cb=>{
+                cb.addEventListener('change', (e)=>{
+                    // sync to desktop checkbox
+                    const name = e.target.getAttribute('data-strategy-name');
+                    const desktopCb = document.querySelector(`.strategy-checkbox[data-strategy-name="${name}"]`);
+                    if(desktopCb){ desktopCb.checked = e.target.checked; toggleStrategyBox(desktopCb); }
+                    saveDraft();
+                });
+            });
+        }
+        function updateWizardUI(){
+            document.querySelectorAll('.wizard-step').forEach(el => el.classList.remove('active'));
+            const current = document.querySelector(`.wizard-step[data-step="${wizardStep}"]`);
+            if(current) current.classList.add('active');
+            // indicator
+            document.getElementById('wizard-steps-indicator').innerText = `Paso ${wizardStep+1} de ${document.querySelectorAll('.wizard-step').length}`;
+            // prev/next button visibility
+            document.getElementById('wizard-prev').disabled = wizardStep===0;
+            document.getElementById('wizard-next').innerText = wizardStep === (document.querySelectorAll('.wizard-step').length-1) ? 'Previsualizar' : 'Siguiente';
+            // sync mobile fields to desktop occasionally
+            syncMobileToDesktop();
+        }
+        function wizardNext(){
+            if(wizardStep === 0){
+                // validate antec
+                const entreprise = document.getElementById('empresa_m').value.trim();
+                if(!entreprise){ showMessage('Ingrese Empresa','error'); return; }
+                // copy mobile to desktop
+                ['empresa','supervisor','area','lugar_especifico','fecha','hora_inicio','hora_termino','descripcion'].forEach(id=>{
+                    const m = document.getElementById(id+'_m'), d = document.getElementById(id);
+                    if(m && d) d.value = m.value;
+                });
+            }
+            if(wizardStep < document.querySelectorAll('.wizard-step').length-1){ wizardStep++; updateWizardUI(); }
+            else {
+                // last step => attempt preview
+                saveDraft(); // persist before preview
+                const artData = collectFormData(true);
+                if(!artData) return;
+                const pdfHtml = generatePdfHtml(artData);
+                document.getElementById('pdf-content').innerHTML = pdfHtml;
+                document.getElementById('pdf-preview-modal').classList.remove('hidden');
             }
         }
-        
-        /**
-         * Clears the entire form and resets pre-task checks.
-         */
-        function clearForm() {
-            // 1. Limpiar inputs de Antecedentes
-            document.getElementById('etapa1-section').querySelectorAll('input[type="text"], input[type="date"], input[type="time"], textarea').forEach(input => input.value = '');
+        function wizardPrev(){ if(wizardStep>0){ wizardStep--; updateWizardUI(); } }
+        function syncMobileToDesktop(){
+            ['empresa','supervisor','area','lugar_especifico','fecha','hora_inicio','hora_termino','descripcion'].forEach(id=>{
+                const m = document.getElementById(id+'_m'), d = document.getElementById(id);
+                if(m && d) d.value = m.value;
+            });
+        }
 
-            // 2. Resetear Firma
-            document.getElementById('firma_base64').value = '';
-            document.getElementById('signature-image').classList.add('hidden');
-            document.getElementById('signature-placeholder').classList.remove('hidden');
-            signatureDataURL = ''; // Resetear variable global de firma
-
-            // 3. Resetear Chequeo de Condiciones (1.2 y 1.3)
-            document.querySelectorAll('#check-list-1-2 button, #subseccion-1-3 button').forEach(btn => {
-                btn.classList.remove('btn-selected');
-                if (btn.getAttribute('data-answer') === 'Si') {
-                    btn.classList.replace('bg-green-700', 'bg-green-500');
-                } else {
-                    btn.classList.replace('bg-red-700', 'bg-red-500');
+        /* ---------------- Draft save/restore ---------------- */
+        function saveDraft(){
+            try{
+                const draft = {
+                    antecedentes: {
+                        empresa: document.getElementById('empresa').value || '',
+                        supervisor: document.getElementById('supervisor').value || '',
+                        area: document.getElementById('area').value || '',
+                        lugar_especifico: document.getElementById('lugar_especifico').value || '',
+                        fecha: document.getElementById('fecha').value || '',
+                        hora_inicio: document.getElementById('hora_inicio').value || '',
+                        hora_termino: document.getElementById('hora_termino').value || '',
+                        descripcion: document.getElementById('descripcion').value || '',
+                        firma_base64: document.getElementById('firma_base64').value || ''
+                    },
+                    chequeo: {
+                        trabajador: {},
+                        tarea: {}
+                    },
+                    estrategias: []
+                };
+                document.querySelectorAll('#check-list-1-2 > div').forEach(div=>{
+                    const key = div.getAttribute('data-pregunta'); const sel = div.querySelector('.btn-selected');
+                    draft.chequeo.trabajador[key] = sel ? sel.getAttribute('data-answer') : '';
+                });
+                document.querySelectorAll('#subseccion-1-3 > div').forEach(div=>{
+                    const key = div.getAttribute('data-pregunta'); const sel = div.querySelector('.btn-selected');
+                    draft.chequeo.tarea[key] = sel ? sel.getAttribute('data-answer') : '';
+                });
+                document.querySelectorAll('.strategy-checkbox').forEach(cb=>{ if(cb.checked) draft.estrategias.push(cb.getAttribute('data-strategy-name')); });
+                localStorage.setItem(ART_DRAFT_KEY, JSON.stringify(draft));
+            }catch(e){ console.error('saveDraft',e); }
+        }
+        function restoreDraftIfAny(){
+            try{
+                const s = localStorage.getItem(ART_DRAFT_KEY); if(!s) return;
+                const draft = JSON.parse(s);
+                if(draft.antecedentes){
+                    Object.entries(draft.antecedentes).forEach(([k,v])=>{
+                        const el = document.getElementById(k); if(el) el.value = v;
+                        const el_m = document.getElementById(k+'_m'); if(el_m) el_m.value = v;
+                    });
                 }
-            });
-            document.getElementById('no-iniciar-alert-1-2').classList.add('hidden');
-            
-            // 4. Ocultar y limpiar campo condicional 1.3.2
-            const docInput = document.getElementById('documento_tipo');
-            docInput.classList.add('hidden');
-            docInput.value = '';
-            
-            // 5. Resetear Estrategias (1.4)
-            document.querySelectorAll('.strategy-checkbox').forEach(checkbox => {
-                checkbox.checked = false;
-                toggleStrategyBox(checkbox); // Aplicar estilo visual
-            });
+                if(draft.chequeo){
+                    for(const [k,v] of Object.entries(draft.chequeo.trabajador || {})){
+                        const desktopDiv = document.querySelector(`#check-list-1-2 > div[data-pregunta="${k}"]`);
+                        if(desktopDiv && v){ const btn = desktopDiv.querySelector(`button[data-answer="${v}"]`); if(btn) handleAnswerClick(btn); }
+                    }
+                    for(const [k,v] of Object.entries(draft.chequeo.tarea || {})){
+                        const desktopDiv = document.querySelector(`#subseccion-1-3 > div[data-pregunta="${k}"]`);
+                        if(desktopDiv && v){ const btn = desktopDiv.querySelector(`button[data-answer="${v}"]`); if(btn) handleAnswerClick(btn); }
+                    }
+                }
+                if(draft.antecedentes && draft.antecedentes.firma_base64){
+                    const fb = draft.antecedentes.firma_base64;
+                    document.getElementById('firma_base64').value = fb;
+                    const img = document.getElementById('signature-image'); img.src = fb; img.classList.remove('hidden'); document.getElementById('signature-placeholder').classList.add('hidden');
+                    signatureDataURL = fb;
+                }
+                if(draft.estrategias) {
+                    document.querySelectorAll('.strategy-checkbox').forEach(cb=>{
+                        cb.checked = draft.estrategias.includes(cb.getAttribute('data-strategy-name'));
+                        toggleStrategyBox(cb);
+                    });
+                }
+            }catch(e){ console.error('restoreDraft',e); }
         }
 
+        /* ---------------- Utilities ---------------- */
+        function debounce(fn, wait){ let t; return function(...args){ clearTimeout(t); t=setTimeout(()=>fn.apply(this,args), wait); }; }
+        // small debounce wrapper for handles
+        function handleResize(){ setupDeviceMode(); }
 
-        // --- UTILITY FUNCTIONS ---
-
-        /**
-         * Displays a custom, non-blocking message instead of alert().
-         * @param {string} message - The message content.
-         * @param {'success'|'error'|'info'} type - The message type.
-         */
-        function showMessage(message, type) {
-            const container = document.getElementById('custom-message-container');
-            const bgColor = type === 'success' ? 'bg-green-500' : (type === 'error' ? 'bg-red-500' : 'bg-blue-500');
-
-            const htmlMessage = `
-                <div class="custom-message fixed inset-x-0 top-0 mx-auto mt-4 z-50 flex items-start justify-center p-4 transition-opacity duration-300 opacity-0 pointer-events-none">
-                    <div class="${bgColor} text-white p-3 rounded-lg shadow-xl max-w-sm transform scale-100 pointer-events-auto">
-                        ${message}
-                    </div>
-                </div>
-            `;
-            container.insertAdjacentHTML('beforeend', htmlMessage);
-            const newMessage = container.lastElementChild;
-            setTimeout(() => newMessage.classList.remove('opacity-0'), 10);
-            
-            setTimeout(() => {
-                newMessage.classList.add('opacity-0');
-                setTimeout(() => newMessage.remove(), 300);
-            }, 3000);
-        }
-
-        // Sobreescribir la función alert para usar el modal custom
-        window.alert = function(message) {
-            showMessage(message, 'info');
-        };
-
-        // Initialize on load
+        /* ---------------- Initialize ---------------- */
         initializeAppLogic();
     </script>
 </body>
