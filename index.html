@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>ART - Análisis de Riesgos de la Tarea (final)</title>
+<title>ART - Análisis de Riesgos de la Tarea (parchado)</title>
 
 <!-- Tailwind -->
 <script src="https://cdn.tailwindcss.com"></script>
@@ -43,6 +43,13 @@ body { font-family: 'Inter', sans-serif; background: var(--bg); color:#111827; -
 .wizard-step{ display:none; }
 .wizard-step.active{ display:block; }
 
+/* btn-selected visual for web & mobile parity */
+.btn-selected {
+    outline: 2px solid #0ea5e9 !important;
+    outline-offset: 3px;
+    border-radius: 6px;
+}
+
 /* wizard controls spacing */
 .wizard-controls { display:flex; justify-content:space-between; gap:12px; align-items:center; margin-top:8px; }
 .small-tertiary { font-size:.85rem; padding:.45rem .75rem; }
@@ -55,9 +62,6 @@ body { font-family: 'Inter', sans-serif; background: var(--bg); color:#111827; -
 /* preview modal */
 .preview-modal { position:fixed; inset:0; background:rgba(31,41,55,0.75); display:flex; align-items:flex-start; justify-content:center; padding:24px; z-index:50; overflow:auto; }
 .preview-inner { width:100%; max-width:900px; margin-top:24px; background:transparent; }
-
-/* preview-actions hide during render */
-.preview-action-hidden{ display:none !important; }
 
 /* responsive adjustments for horarios */
 @media (max-width:767px){
@@ -385,7 +389,19 @@ let wizardInitialized = false;
 function debounce(fn, wait){ let t; return function(...args){ clearTimeout(t); t=setTimeout(()=>fn.apply(this,args), wait); }; }
 function showMessage(text, type='info'){ const el=document.createElement('div'); el.textContent=text; el.className='fixed top-5 left-1/2 transform -translate-x-1/2 z-60 px-4 py-2 rounded shadow ' + (type==='error'?'bg-red-500 text-white':type==='success'?'bg-green-500 text-white':'bg-blue-500 text-white'); document.body.appendChild(el); setTimeout(()=>el.remove(),3000); }
 
-/* ---------------- Signature functions ---------------- */
+/* ---------------- Signature helpers (patched) ---------------- */
+
+/* Convert pointer event to canvas coordinates that respect CSS scaling */
+function getCanvasCoords(e){
+  const rect = canvas.getBoundingClientRect();
+  const scaleX = canvas.width / rect.width;
+  const scaleY = canvas.height / rect.height;
+  return {
+    x: (e.clientX - rect.left) * scaleX,
+    y: (e.clientY - rect.top) * scaleY
+  };
+}
+
 function initializeSignatureCanvas(){
   canvas = document.getElementById('signature-canvas');
   if(!canvas) return;
@@ -396,45 +412,52 @@ function initializeSignatureCanvas(){
   ctx.lineWidth = 3;
   canvas.style.touchAction = 'none';
 
+  // remove previous listeners if any (defensive)
+  canvas.replaceWith(canvas.cloneNode(true));
+  canvas = document.getElementById('signature-canvas');
+  ctx = canvas.getContext('2d');
+  ctx.strokeStyle = '#000';
+  ctx.lineJoin = 'round';
+  ctx.lineCap = 'round';
+  ctx.lineWidth = 3;
+  canvas.style.touchAction = 'none';
+
   canvas.addEventListener('pointerdown', (e)=>{
-    isDrawing=true;
-    const rect=canvas.getBoundingClientRect();
-    lastX = e.clientX - rect.left;
-    lastY = e.clientY - rect.top;
-  });
-  canvas.addEventListener('pointermove', (e)=>{
-    if(!isDrawing) return;
-    const rect=canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-    ctx.beginPath(); ctx.moveTo(lastX,lastY); ctx.lineTo(x,y); ctx.stroke();
+    isDrawing = true;
+    const {x,y} = getCanvasCoords(e);
     lastX = x; lastY = y;
   });
+
+  canvas.addEventListener('pointermove', (e)=>{
+    if(!isDrawing) return;
+    const {x,y} = getCanvasCoords(e);
+    ctx.beginPath();
+    ctx.moveTo(lastX,lastY);
+    ctx.lineTo(x,y);
+    ctx.stroke();
+    lastX = x; lastY = y;
+  });
+
   canvas.addEventListener('pointerup', ()=> isDrawing=false);
   canvas.addEventListener('pointercancel', ()=> isDrawing=false);
 }
 
-function openSignatureModal(){
-  const modal = document.getElementById('signature-modal');
-  modal.classList.remove('hidden');
-  adjustSignatureSize(); // set canvas size depending on device
-  initializeSignatureCanvas();
-}
-
-function closeSignatureModal(){ document.getElementById('signature-modal').classList.add('hidden'); }
-
 function adjustSignatureSize(){
   const c = document.getElementById('signature-canvas');
   const isMobile = window.innerWidth < 768;
+
   if(isMobile){
-    // wide canvas to allow horizontal signature on mobile
-    const w = Math.max(window.innerWidth, window.innerHeight) - 40;
-    const h = Math.max(220, Math.floor(window.innerHeight * 0.45));
-    c.width = Math.max(800, Math.floor(w));
-    c.height = Math.max(240, Math.floor(h));
+    // force a wide canvas to encourage horizontal signing
+    const max = Math.max(window.innerWidth, window.innerHeight);
+    const min = Math.min(window.innerWidth, window.innerHeight);
+
+    // Make it wider so drawing has more horizontal space
+    c.width = Math.max(800, Math.floor(max * 1.2));
+    c.height = Math.max(240, Math.floor(min * 0.5));
+
     c.style.width = '100%';
     c.style.height = 'auto';
-    document.getElementById('signature-instruction').innerText = 'Gira el dispositivo a horizontal para firmar con mayor comodidad.';
+    document.getElementById('signature-instruction').innerText = 'Gira el dispositivo para firmar más cómodo (modo horizontal recomendado).';
   } else {
     c.width = 900; c.height = 300;
     c.style.width = '100%'; c.style.height = 'auto';
@@ -442,30 +465,53 @@ function adjustSignatureSize(){
   }
 }
 
+function openSignatureModal(){
+  const modal = document.getElementById('signature-modal');
+  modal.classList.remove('hidden');
+  adjustSignatureSize();
+  // small timeout to ensure size applied before initializing
+  setTimeout(()=> initializeSignatureCanvas(), 60);
+}
+
+function closeSignatureModal(){ document.getElementById('signature-modal').classList.add('hidden'); }
+
 function clearSignatureCanvas(){
-  if(!ctx) return;
-  ctx.clearRect(0,0,canvas.width,canvas.height);
+  if(!canvas) return;
+  const ctmp = document.getElementById('signature-canvas');
+  const cctx = ctmp.getContext('2d');
+  cctx.clearRect(0,0,ctmp.width,ctmp.height);
 }
 
 function saveSignature(){
-  if(!canvas) return;
-  const tmp = document.createElement('canvas'); tmp.width = canvas.width; tmp.height = canvas.height;
-  const tctx = tmp.getContext('2d'); tctx.fillStyle='#fff'; tctx.fillRect(0,0,tmp.width,tmp.height); tctx.drawImage(canvas,0,0);
+  const ctmp = document.getElementById('signature-canvas');
+  if(!ctmp) return;
+  const tmp = document.createElement('canvas'); tmp.width = ctmp.width; tmp.height = ctmp.height;
+  const tctx = tmp.getContext('2d');
+  tctx.fillStyle = '#fff'; tctx.fillRect(0,0,tmp.width,tmp.height);
+  tctx.drawImage(ctmp,0,0);
+
+  // Check if blank: examine pixel data
   const data = tmp.toDataURL('image/png');
-  // check blank
-  const blank = document.createElement('canvas'); blank.width = tmp.width; blank.height = tmp.height; if(data === blank.toDataURL()){ showMessage('Firma vacía','error'); return; }
+  const pixels = tctx.getImageData(0,0,tmp.width,tmp.height).data;
+  let nonBlank = false;
+  for(let i=0;i<pixels.length;i+=4){
+    if(pixels[i] !== 255 || pixels[i+1] !== 255 || pixels[i+2] !== 255 || pixels[i+3] !== 0){
+      nonBlank = true; break;
+    }
+  }
+  if(!nonBlank){ showMessage('Firma vacía', 'error'); return; }
+
   document.getElementById('firma_base64').value = data;
-  const img = document.getElementById('signature-image'); if(img){ img.src = data; img.classList.remove('hidden'); }
   const disp = document.getElementById('signature-display-box');
   if(disp) disp.innerHTML = '<img src="'+data+'" style="max-width:100%; max-height:80px; object-fit:contain"/>';
   const dispm = document.getElementById('signature-display-box-m');
   if(dispm) dispm.innerHTML = '<img src="'+data+'" style="max-width:100%; max-height:80px; object-fit:contain"/>';
   closeSignatureModal();
-  showMessage('Firma guardada','success');
+  showMessage('Firma guardada', 'success');
   saveDraft();
 }
 
-/* ---------------- Form & Wizard ---------------- */
+/* ---------------- Form & Wizard logic (patched) ---------------- */
 function initStrategyBoxes(){
   document.querySelectorAll('.strategy-box').forEach(box=>{
     box.addEventListener('click', (e)=>{
@@ -480,7 +526,7 @@ function toggleStrategyBox(checkbox){
   saveDraft();
 }
 
-/* Answer buttons for desktop/mobile */
+/* Wire desktop answer buttons: now only visual selection (no immediate NO-block) */
 function wireAnswerButtons(){
   document.querySelectorAll('#check-list-1-2 .ans-btn').forEach(btn=>{
     btn.addEventListener('click', ()=> handleAnswer(btn));
@@ -499,12 +545,7 @@ function handleAnswer(btn){
   const buttons = parent.querySelectorAll('button');
   buttons.forEach(b => b.classList.remove('btn-selected'));
   btn.classList.add('btn-selected');
-  // mark colors
-  buttons.forEach(b=>{
-    if(b.getAttribute('data-answer')==='Si') b.classList.replace('bg-green-500','bg-green-500');
-    if(b.getAttribute('data-answer')==='No') b.classList.replace('bg-red-500','bg-red-500');
-  });
-  checkNoAnswers();
+  // we removed immediate checkNoAnswers() here so mobile won't show alert on selection
   saveDraft();
 }
 
@@ -545,7 +586,8 @@ function collectFormData(requireSignature = true){
   // required fields
   const req = ['empresa','supervisor','area','lugar_especifico','fecha','hora_inicio','hora_termino','descripcion'];
   for(const id of req){
-    const val = document.getElementById(id).value;
+    const el = document.getElementById(id);
+    const val = el ? el.value : '';
     if(!val || !String(val).trim()){ showMessage('Complete el campo: ' + id,'error'); return null; }
   }
 
@@ -564,7 +606,10 @@ function collectFormData(requireSignature = true){
     const sel = div.querySelector('.btn-selected');
     tarea[key] = sel ? sel.getAttribute('data-answer') : '';
   });
-  tarea.documento_tipo = document.getElementById('documento_tipo').value || '';
+  // include documento_tipo (desktop) or mobile one if present
+  const docDesktop = document.getElementById('documento_tipo');
+  const docMobile = document.getElementById('documento_tipo_m');
+  tarea.documento_tipo = (docDesktop && !docDesktop.classList.contains('hidden')) ? docDesktop.value : (docMobile ? docMobile.value : '');
 
   const estrategias = [];
   document.querySelectorAll('.strategy-checkbox').forEach(cb=>{
@@ -668,7 +713,6 @@ function showPdfPreview(){
   const html = generatePdfHtml(data);
   const pdfContent = document.getElementById('pdf-content');
   pdfContent.innerHTML = html;
-  // ensure images load
   waitForImages(pdfContent).then(()=> {
     document.getElementById('pdf-preview-modal').classList.remove('hidden');
     document.getElementById('pdf-filename-input').value = `ART_${(new Date()).toISOString().slice(0,10)}_${data.antecedentes.supervisor.replace(/\s+/g,'_').slice(0,30)}`;
@@ -680,7 +724,6 @@ async function mobileImagePreviewFlow(){
   const data = collectFormData(true);
   if(!data) return;
 
-  // build offscreen node
   const tmp = document.createElement('div');
   tmp.style.width = '794px';
   tmp.style.minHeight = '1123px';
@@ -697,7 +740,6 @@ async function mobileImagePreviewFlow(){
     const canvas = await html2canvas(tmp, {scale:2, useCORS:true, backgroundColor:'#ffffff', scrollY: -window.scrollY});
     const url = canvas.toDataURL('image/png');
 
-    // show image in preview container
     const pdfContent = document.getElementById('pdf-content');
     pdfContent.innerHTML = `<img src="${url}" style="width:100%;height:auto;display:block" alt="preview"/>`;
     document.getElementById('pdf-filename-input').value = `ART_${(new Date()).toISOString().slice(0,10)}_${data.antecedentes.supervisor.replace(/\s+/g,'_').slice(0,30)}`;
@@ -715,7 +757,6 @@ async function downloadPdfAndClose(){
     const data = collectFormData(true);
     if(!data) return;
 
-    // create element to render
     const el = document.createElement('div');
     el.style.width = '794px';
     el.style.minHeight = '1123px';
@@ -751,7 +792,7 @@ async function downloadPdfAndClose(){
   }
 }
 
-/* ---------------- Wizard controls & validation ---------------- */
+/* ---------------- Wizard controls & validation (patched) ---------------- */
 function applyMode(){
   isMobileMode = window.innerWidth < 768;
   const full = document.getElementById('full-form');
@@ -770,7 +811,6 @@ function prepareWizard(){
   if(wizardInitialized) return;
   wizardInitialized = true;
   wizardStep = 0;
-  // copy desktop to mobile
   ['empresa','supervisor','area','lugar_especifico','fecha','hora_inicio','hora_termino','descripcion'].forEach(id=>{
     const d = document.getElementById(id), m = document.getElementById(id + '_m');
     if(d && m) m.value = d.value;
@@ -795,7 +835,12 @@ function buildWizardChecklists(){
       const desktopDiv = document.querySelector(`#check-list-1-2 > div[data-pregunta="${key}"]`);
       if(desktopDiv){
         const desktopBtn = desktopDiv.querySelector(`button[data-answer="${ans}"]`);
-        if(desktopBtn) handleAnswer(desktopBtn);
+        if(desktopBtn) {
+          // Visual selection but DO NOT call checkNoAnswers() here
+          desktopBtn.classList.add('btn-selected');
+          // unselect sibling
+          desktopDiv.querySelectorAll('button').forEach(b => { if(b !== desktopBtn) b.classList.remove('btn-selected'); });
+        }
       }
       e.target.parentElement.querySelectorAll('button').forEach(b=>b.classList.remove('ring-2'));
       e.target.classList.add('ring-2');
@@ -810,6 +855,14 @@ function buildWizardChecklists(){
     const key = div.getAttribute('data-pregunta');
     const item = document.createElement('div'); item.className='mb-3';
     item.innerHTML = `<div class="mb-1">${q}</div><div class="flex gap-2"><button data-key="${key}" data-answer="Si" class="px-3 py-1 bg-green-500 text-white rounded">Sí</button><button data-key="${key}" data-answer="No" class="px-3 py-1 bg-red-500 text-white rounded">No</button></div>`;
+    // If this key is documento_regula, append textarea for mobile
+    if(key === 'documento_regula'){
+      const ta = document.createElement('textarea');
+      ta.id = 'documento_tipo_m';
+      ta.className = 'hidden mt-2 p-2 w-full border rounded';
+      ta.placeholder = 'Indique cuál: manual, procedimiento, instructivo...';
+      item.appendChild(ta);
+    }
     cont.appendChild(item);
   });
   cont.querySelectorAll('button').forEach(btn=>{
@@ -818,7 +871,22 @@ function buildWizardChecklists(){
       const desktopDiv = document.querySelector(`#subseccion-1-3 > div[data-pregunta="${key}"]`);
       if(desktopDiv){
         const desktopBtn = desktopDiv.querySelector(`button[data-answer="${ans}"]`);
-        if(desktopBtn) handleAnswer(desktopBtn);
+        if(desktopBtn){
+          desktopBtn.classList.add('btn-selected');
+          desktopDiv.querySelectorAll('button').forEach(b => { if(b !== desktopBtn) b.classList.remove('btn-selected'); });
+          // If this is the document question, toggle desktop textarea
+          if(key === 'documento_regula'){
+            const td = document.getElementById('documento_tipo');
+            if(ans === 'Si'){ td.classList.remove('hidden'); } else { td.classList.add('hidden'); td.value=''; }
+          }
+        }
+      }
+      // mobile textarea handling for documento_regula
+      if(key === 'documento_regula'){
+        const ta = document.getElementById('documento_tipo_m');
+        if(ta){
+          if(ans === 'Si'){ ta.classList.remove('hidden'); } else { ta.classList.add('hidden'); ta.value=''; }
+        }
       }
       e.target.parentElement.querySelectorAll('button').forEach(b=>b.classList.remove('ring-2'));
       e.target.classList.add('ring-2');
@@ -862,17 +930,14 @@ function wizardNext(){
     });
   }
 
-  // validation: do not allow finishing if any critical answer == 'No'
+  // If last step, validate critical NO answers and signature (ONLY when pressing Next on last)
   if(wizardStep === document.querySelectorAll('.wizard-step').length -1){
-    // last step -> try finish: check critical answers
     if(checkNoAnswers()){
       showMessage('Hay respuestas "NO" en preguntas críticas: NO INICIAR LA TAREA. Corrija antes de generar.', 'error');
       return;
     }
-    // ensure signature exists
     const firma = document.getElementById('firma_base64').value;
     if(!firma){ showMessage('Firma requerida', 'error'); return; }
-    // proceed to preview (mobile image)
     mobileImagePreviewFlow();
     return;
   }
@@ -928,16 +993,16 @@ function restoreDraftIfAny(){
     if(draft.chequeo){
       for(const [k,v] of Object.entries(draft.chequeo.trabajador || {})){
         const div = document.querySelector(`#check-list-1-2 > div[data-pregunta="${k}"]`);
-        if(div && v){ const btn = div.querySelector(`button[data-answer="${v}"]`); if(btn) handleAnswer(btn); }
+        if(div && v){ const btn = div.querySelector(`button[data-answer="${v}"]`); if(btn) { btn.classList.add('btn-selected'); } }
       }
       for(const [k,v] of Object.entries(draft.chequeo.tarea || {})){
         const div = document.querySelector(`#subseccion-1-3 > div[data-pregunta="${k}"]`);
-        if(div && v){ const btn = div.querySelector(`button[data-answer="${v}"]`); if(btn) handleAnswer(btn); }
+        if(div && v){ const btn = div.querySelector(`button[data-answer="${v}"]`); if(btn) { btn.classList.add('btn-selected'); } }
       }
     }
     if(draft.antecedentes && draft.antecedentes.firma_base64){
       document.getElementById('firma_base64').value = draft.antecedentes.firma_base64;
-      const disp = document.getElementById('signature-display-box'); disp.innerHTML = '<img src="'+draft.antecedentes.firma_base64+'" style="max-width:100%; max-height:80px; object-fit:contain"/>';
+      document.getElementById('signature-display-box').innerHTML = '<img src="'+draft.antecedentes.firma_base64+'" style="max-width:100%; max-height:80px; object-fit:contain"/>';
       const dispm = document.getElementById('signature-display-box-m'); if(dispm) dispm.innerHTML = '<img src="'+draft.antecedentes.firma_base64+'" style="max-width:100%; max-height:80px; object-fit:contain"/>';
     }
     if(draft.estrategias){
@@ -987,14 +1052,13 @@ function loadArtToForm(id){
   document.getElementById('hora_termino').value = art.antecedentes.hora_termino || '';
   document.getElementById('descripcion').value = art.antecedentes.descripcion || '';
   if(art.antecedentes.firma_base64){ document.getElementById('firma_base64').value = art.antecedentes.firma_base64; document.getElementById('signature-display-box').innerHTML = '<img src="'+art.antecedentes.firma_base64+'" style="max-width:100%; max-height:80px; object-fit:contain"/>'; }
-  // restore checks
   for(const [k,v] of Object.entries(art.chequeo.trabajador || {})){
     const div = document.querySelector(`#check-list-1-2 > div[data-pregunta="${k}"]`);
-    if(div && v){ const btn = div.querySelector(`button[data-answer="${v}"]`); if(btn) handleAnswer(btn); }
+    if(div && v){ const btn = div.querySelector(`button[data-answer="${v}"]`); if(btn) btn.classList.add('btn-selected'); }
   }
   for(const [k,v] of Object.entries(art.chequeo.tarea || {})){
     const div = document.querySelector(`#subseccion-1-3 > div[data-pregunta="${k}"]`);
-    if(div && v){ const btn = div.querySelector(`button[data-answer="${v}"]`); if(btn) handleAnswer(btn); }
+    if(div && v){ const btn = div.querySelector(`button[data-answer="${v}"]`); if(btn) btn.classList.add('btn-selected'); }
   }
   showMessage('Cargado','success');
 }
@@ -1019,15 +1083,17 @@ document.getElementById('wizard-next').addEventListener('click', wizardNext);
 document.getElementById('wizard-prev').addEventListener('click', wizardPrev);
 document.getElementById('load-history-btn').addEventListener('click', loadArtHistory);
 
-// wire initial
 (function init(){
   applyMode();
+  adjustSignatureSize();
   initializeSignatureCanvas();
   initStrategyBoxes();
   wireAnswerButtons();
   restoreDraftIfAny();
-  // wire doc-question specially so textarea toggles in desktop
+
+  // wire desktop document-question specially so textarea toggles in desktop
   document.querySelectorAll('.ans-btn-doc').forEach(btn=> btn.addEventListener('click', ()=> { const selected = btn.getAttribute('data-answer'); const txt = document.getElementById('documento_tipo'); if(selected==='Si') txt.classList.remove('hidden'); else txt.classList.add('hidden'); saveDraft(); }));
+
   // wire inputs to save draft
   document.querySelectorAll('#full-form input, #full-form textarea').forEach(i=> i.addEventListener('input', debounce(saveDraft, 300)));
 })();
