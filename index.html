@@ -13,11 +13,13 @@
 
     <!-- html2pdf (para generar PDF en cliente) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <!-- html2canvas (usado para generar preview-imagen en móvil) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
     <style>
         :root { --bg:#f7f7f9; --accent-red:#ef4444; --accent-blue:#0f4b8f; --accent-teal:#0d9488; }
         body { font-family: 'Inter', sans-serif; background: var(--bg); color:#111827; -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale; }
-        .pdf-page { width:794px; min-height:1123px; background:#fff; margin:0 auto; padding:32px; box-sizing:border-box; border:1px solid #e6e9ee; color:#1f2937; font-size:13px; }
+        .pdf-page { width:794px; min-height:1123px; background:#fff; margin:0 auto; padding:32px; box-sizing:border-box; /* border removed for PDF generation */ color:#1f2937; font-size:13px; }
         .pdf-header{ display:flex; justify-content:space-between; align-items:flex-start; gap:20px; }
         .pdf-title{ color:#b91c1c; font-weight:700; font-size:18px; }
         .pdf-subtitle{ font-size:11px; color:#6b7280; margin-top:6px; }
@@ -27,7 +29,6 @@
         .pdf-data-value{ text-align:right; width:60%; color:#111827; }
         .pdf-signature-box{ border:1px solid #1f2937; padding:6px; margin-top:10px; height:100px; display:flex; align-items:center; justify-content:center; }
 
-        /* form styles (kept visually similar to original) */
         .strategy-box{ display:flex; align-items:center; justify-content:center; height:100px; border:2px solid #cbd5e1; border-radius:.5rem; text-align:center; font-weight:600; cursor:pointer; transition:all .2s; position:relative; background:#f8fafc; color:#475569; }
         .strategy-box.selected{ border-color:var(--accent-teal); background:#ccfbf1; color:#0f766e; box-shadow:0 4px 6px rgba(0,0,0,.08); }
         .strategy-checkbox{ position:absolute; top:8px; right:8px; width:1.25rem; height:1.25rem; accent-color:var(--accent-teal); }
@@ -35,17 +36,24 @@
         #signature-display-box{ min-height:80px; background:#e2e8f0; display:flex; align-items:center; justify-content:center; border:2px dashed #94a3b8; border-radius:.5rem; color:#64748b; font-style:italic; cursor:pointer; overflow:hidden; padding:4px; }
         #signature-image{ max-width:100%; max-height:100%; object-fit:contain; }
 
-        /* wizard */
         #wizard-container{ max-width:640px; margin:0 auto; }
         .wizard-step{ display:none; }
         .wizard-step.active{ display:block; }
 
-        /* hide interactive UI while generating PDF */
         .preview-action-hidden{ display:none !important; }
 
-        /* responsive */
+        /* Signature fullscreen modal tweaks */
+        .signature-fullscreen .signature-modal-inner { width:100%; height:100%; display:flex; flex-direction:column; gap:10px; align-items:center; justify-content:center; }
+        .signature-fullscreen canvas { border-radius:12px; box-shadow:0 10px 30px rgba(0,0,0,0.25); }
+
+        /* wizard buttons spacing */
+        .wizard-controls { display:flex; justify-content:space-between; gap:12px; align-items:center; }
+        .wizard-actions-bottom { display:flex; justify-content:center; margin-top:10px; }
+        .small-tertiary { font-size:.85rem; padding:.45rem .75rem; }
+
         @media (max-width: 767px){
             .pdf-page{ width: 100%; min-height: auto; padding:20px; box-shadow:none; border:0; }
+            .signature-fullscreen canvas { width: calc(100vw - 40px) !important; height: calc(55vh) !important; }
         }
     </style>
 </head>
@@ -248,10 +256,18 @@
                     <input type="text" id="supervisor_m" placeholder="Supervisor" class="mb-2 p-3 border rounded w-full uppercase">
                     <input type="text" id="area_m" placeholder="Área" class="mb-2 p-3 border rounded w-full uppercase">
                     <input type="text" id="lugar_especifico_m" placeholder="Lugar específico" class="mb-2 p-3 border rounded w-full uppercase">
-                    <input type="date" id="fecha_m" class="mb-2 p-3 border rounded w-full">
-                    <div class="grid grid-cols-2 gap-2">
-                        <input type="time" id="hora_inicio_m" class="p-3 border rounded">
-                        <input type="time" id="hora_termino_m" class="p-3 border rounded">
+                    <label class="block text-sm font-semibold mb-1">FECHA</label>
+                    <input id="fecha_m" type="date" class="mb-2 p-3 border rounded w-full">
+                    <label class="block text-sm font-semibold mb-1">HORARIO</label>
+                    <div class="grid grid-cols-2 gap-2 mb-3">
+                        <div>
+                            <label class="text-xs text-gray-500">Inicio</label>
+                            <input id="hora_inicio_m" type="time" class="p-3 border rounded">
+                        </div>
+                        <div>
+                            <label class="text-xs text-gray-500">Término</label>
+                            <input id="hora_termino_m" type="time" class="p-3 border rounded">
+                        </div>
                     </div>
                     <textarea id="descripcion_m" rows="3" placeholder="Descripción" class="mt-2 p-3 border rounded w-full uppercase"></textarea>
                 </div>
@@ -277,31 +293,32 @@
                     <p class="text-sm text-gray-600">La firma es obligatoria antes de previsualizar.</p>
                 </div>
 
-                <div class="mt-4 flex justify-between">
+                <div class="mt-4 wizard-controls">
                     <button id="wizard-prev" class="bg-gray-300 px-4 py-2 rounded">Anterior</button>
-                    <div class="flex gap-2">
-                        <button id="wizard-save" class="bg-green-500 text-white px-4 py-2 rounded">Guardar borrador</button>
-                        <button id="wizard-next" class="bg-blue-600 text-white px-4 py-2 rounded">Siguiente</button>
-                    </div>
+                    <button id="wizard-next" class="bg-blue-600 text-white px-4 py-2 rounded">Siguiente</button>
                 </div>
+
+                <!-- Save draft intentionally removed (button removed since it did nothing) -->
             </div>
         </div>
 
     </div>
 </div>
 
-<!-- Signature Modal -->
-<div id="signature-modal" class="fixed inset-0 bg-gray-600 bg-opacity-75 hidden items-center justify-center p-4 z-50">
-    <div class="bg-white rounded-xl shadow-2xl w-full max-w-lg p-6">
-        <div class="flex justify-between items-center border-b pb-3 mb-4">
+<!-- Signature Modal (fullscreen on mobile) -->
+<div id="signature-modal" class="fixed inset-0 bg-gray-600 bg-opacity-85 hidden items-center justify-center p-4 z-50">
+    <div class="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[95vh] p-4 signature-modal-inner">
+        <div class="flex justify-between items-center mb-2">
             <h3 class="text-2xl font-bold text-gray-800">Firma Digital del Supervisor</h3>
+            <button onclick="closeSignatureModal()" class="text-gray-600 px-3 py-1 rounded hover:bg-gray-100">Cerrar</button>
         </div>
-        <p class="text-sm text-gray-600 mb-3">Firme dentro del recuadro usando su dedo o stylus. La firma es obligatoria.</p>
-        <canvas id="signature-canvas" width="450" height="150" class="w-full border-4 border-dashed rounded-lg"></canvas>
-        <div class="flex justify-between mt-4 space-x-3">
+        <p id="signature-instruction" class="text-sm text-gray-600 mb-2">Si está en móvil, gira el dispositivo a horizontal para una firma más cómoda.</p>
+        <div style="display:flex;justify-content:center">
+            <canvas id="signature-canvas" width="900" height="300" class="w-full max-w-full border-4 border-dashed rounded-lg" style="touch-action:none"></canvas>
+        </div>
+        <div class="flex gap-3 mt-4">
             <button onclick="clearSignatureCanvas()" class="flex-1 bg-yellow-500 hover:bg-yellow-600 text-white font-medium py-2 rounded-lg">Borrar Firma</button>
             <button onclick="saveSignature()" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 rounded-lg">Guardar y Cerrar</button>
-            <button onclick="closeSignatureModal()" class="flex-1 bg-gray-400 hover:bg-gray-500 text-white font-medium py-2 rounded-lg">Cancelar</button>
         </div>
     </div>
 </div>
@@ -309,7 +326,10 @@
 <!-- PDF Preview Modal (single, cleaned) -->
 <div id="pdf-preview-modal" class="fixed inset-0 bg-gray-600 bg-opacity-75 hidden items-center justify-center p-4 z-40">
     <div class="flex justify-center items-start w-full h-full overflow-auto p-6">
-        <div class="pdf-page" id="pdf-content"></div>
+        <div id="pdf-content-container" class="w-full max-w-3xl">
+            <!-- content injected here: either HTML for desktop preview or an <img> for mobile preview -->
+            <div class="pdf-page" id="pdf-content"></div>
+        </div>
     </div>
 
     <div class="fixed bottom-6 right-6 flex gap-2" id="preview-actions">
@@ -367,66 +387,84 @@ function initializeSignatureCanvas(){
     ctx.lineJoin = 'round';
     ctx.lineCap = 'round';
     ctx.lineWidth = 3;
-    // mouse
-    canvas.addEventListener('mousedown', (e)=>startDrawing(e.offsetX,e.offsetY));
-    canvas.addEventListener('mousemove', (e)=>draw(e.offsetX,e.offsetY));
-    canvas.addEventListener('mouseup', stopDrawing);
-    canvas.addEventListener('mouseout', stopDrawing);
-    // touch
-    canvas.addEventListener('touchstart', (e)=>{e.preventDefault(); const rect=canvas.getBoundingClientRect(); const x=e.touches[0].clientX-rect.left; const y=e.touches[0].clientY-rect.top; startDrawing(x,y);});
-    canvas.addEventListener('touchmove', (e)=>{e.preventDefault(); const rect=canvas.getBoundingClientRect(); const x=e.touches[0].clientX-rect.left; const y=e.touches[0].clientY-rect.top; draw(x,y);});
-    canvas.addEventListener('touchend', stopDrawing);
-}
-function startDrawing(x,y){ isDrawing=true; [lastX,lastY]=[x,y]; }
-function draw(x,y){ if(!isDrawing) return; ctx.beginPath(); ctx.moveTo(lastX,lastY); ctx.lineTo(x,y); ctx.stroke(); [lastX,lastY]=[x,y]; }
-function stopDrawing(){ isDrawing=false; }
 
-window.openSignatureModal = function(){
-    document.getElementById('signature-modal').classList.remove('hidden');
-    if(signatureDataURL) drawSignatureFromDataURL(signatureDataURL); else clearSignatureCanvas();
-};
-function closeSignatureModal(){ document.getElementById('signature-modal').classList.add('hidden'); }
-window.clearSignatureCanvas = function(){
+    // pointer events unified to support touch and mouse
+    canvas.addEventListener('pointerdown', (e)=>{ e.preventDefault(); const rect=canvas.getBoundingClientRect(); isDrawing=true; lastX = (e.clientX - rect.left); lastY = (e.clientY - rect.top); });
+    canvas.addEventListener('pointermove', (e)=>{ if(!isDrawing) return; const rect=canvas.getBoundingClientRect(); const x = e.clientX - rect.left; const y = e.clientY - rect.top; ctx.beginPath(); ctx.moveTo(lastX,lastY); ctx.lineTo(x,y); ctx.stroke(); [lastX,lastY]=[x,y]; });
+    canvas.addEventListener('pointerup', ()=>{ isDrawing=false; });
+    canvas.addEventListener('pointercancel', ()=>{ isDrawing=false; });
+
+    // touch-action none to prevent scrolling while drawing
+    canvas.style.touchAction = 'none';
+}
+function clearSignatureCanvas(){
     if(!ctx) return;
     ctx.clearRect(0,0,canvas.width,canvas.height);
-};
-window.saveSignature = function(){
-    const temp = document.createElement('canvas'); temp.width=canvas.width; temp.height=canvas.height; const tctx=temp.getContext('2d'); tctx.fillStyle='#FFFFFF'; tctx.fillRect(0,0,temp.width,temp.height);
-    const blank = temp.toDataURL();
-    const data = canvas.toDataURL('image/png');
+}
+function openSignatureModal(){
+    // If mobile: make modal fullscreen-looking and enlarge canvas to landscape-ish
+    const modal = document.getElementById('signature-modal');
+    modal.classList.remove('hidden');
+
+    // adjust canvas size for mobile for a more horizontal space
+    const isMobile = window.innerWidth < 768;
+    const c = document.getElementById('signature-canvas');
+    if(isMobile){
+        // target a wide canvas that fits the viewport in landscape-ish ratio
+        const w = Math.max(window.innerWidth, window.innerHeight) - 40;
+        const h = Math.min(window.innerHeight, Math.floor(window.innerWidth * 0.55));
+        c.width = Math.max(800, Math.floor(w));
+        c.height = Math.max(240, Math.floor(h));
+        c.style.width = '100%';
+        c.style.height = 'auto';
+        document.getElementById('signature-instruction').innerText = 'Gira el dispositivo a horizontal para firmar con mayor comodidad.';
+    } else {
+        // desktop: keep default reasonable size
+        c.width = 900;
+        c.height = 300;
+        c.style.width = '100%';
+        c.style.height = 'auto';
+        document.getElementById('signature-instruction').innerText = 'Firme dentro del recuadro usando su ratón o trackpad.';
+    }
+
+    // re-init drawing context so coordinates map to new size
+    initializeSignatureCanvas();
+}
+function closeSignatureModal(){ document.getElementById('signature-modal').classList.add('hidden'); }
+
+function saveSignature(){
+    if(!canvas) return;
+    const temp = document.createElement('canvas'); temp.width = canvas.width; temp.height = canvas.height;
+    const tctx=temp.getContext('2d');
+    tctx.fillStyle='#FFFFFF'; tctx.fillRect(0,0,temp.width,temp.height);
+    tctx.drawImage(canvas,0,0);
+    const data = temp.toDataURL('image/png');
+    // check blank
+    const blank = (function(){
+        const b = document.createElement('canvas'); b.width=temp.width; b.height=temp.height; return b.toDataURL();
+    })();
     if(data === blank){ showMessage('Error: La firma no puede estar vacía.','error'); return; }
     signatureDataURL = data;
     document.getElementById('firma_base64').value = data;
     const img = document.getElementById('signature-image'); img.src = data; img.classList.remove('hidden'); document.getElementById('signature-placeholder').classList.add('hidden');
+    // mobile display
     const sigBox = document.getElementById('signature-display-box-m');
     if(sigBox){ sigBox.innerHTML = '<img src="'+data+'" style="max-width:100%; max-height:80px; object-fit:contain"/>'; }
     closeSignatureModal();
     showMessage('Firma guardada con éxito.','success');
-    saveDraft();
-};
-function drawSignatureFromDataURL(dataURL){
-    if(!dataURL) return;
-    const img=new Image();
-    img.onload = function(){
-        ctx.fillStyle='#FFFFFF'; ctx.fillRect(0,0,canvas.width,canvas.height);
-        const scale = Math.min(canvas.width/img.width, canvas.height/img.height);
-        const x = (canvas.width/2) - (img.width/2)*scale;
-        const y = (canvas.height/2) - (img.height/2)*scale;
-        ctx.drawImage(img, x, y, img.width*scale, img.height*scale);
-    }
-    img.src = dataURL;
 }
 
 /* ---------------- Form Logic ---------------- */
 function initStrategyBoxes(){
     document.querySelectorAll('.strategy-checkbox').forEach(cb => toggleStrategyBox(cb));
 }
-window.toggleStrategyBox = function(checkbox){
+function toggleStrategyBox(checkbox){
     const box = checkbox.closest('.strategy-box');
     if(checkbox.checked) box.classList.add('selected'); else box.classList.remove('selected');
     saveDraft();
 }
 
+/* ---------------- Event listeners ---------------- */
 function setupEventListeners(){
     document.querySelectorAll('#check-list-1-2 .answer-btn-1-2, #subseccion-1-3 .answer-btn-1-3').forEach(btn => {
         btn.addEventListener('click', (e)=>{ handleAnswerClick(e.target); });
@@ -439,9 +477,9 @@ function setupEventListeners(){
     });
     document.getElementById('wizard-next')?.addEventListener('click', wizardNext);
     document.getElementById('wizard-prev')?.addEventListener('click', wizardPrev);
-    document.getElementById('wizard-save')?.addEventListener('click', ()=>{ saveDraft(); showMessage('Borrador guardado','success'); });
+    // NOTE: Save draft button removed from UI so no listener here
 
-    // PDF download button
+    // Preview & PDF
     document.getElementById('download-pdf-btn')?.addEventListener('click', () => {
         document.getElementById('download-pdf-btn').disabled = true;
         document.getElementById('download-pdf-btn').innerText = 'Generando PDF...';
@@ -450,6 +488,17 @@ function setupEventListeners(){
             document.getElementById('download-pdf-btn').innerText = '📥 Descargar PDF';
         });
     });
+
+    document.getElementById('preview-art-btn')?.addEventListener('click', ()=> {
+        // open preview respecting mobile mode
+        if(isMobileMode){
+            mobileImagePreviewFlow();
+        } else {
+            showPdfPreview();
+        }
+    });
+
+    document.getElementById('load-history-btn')?.addEventListener('click', loadArtHistory);
 }
 
 /* Handle answer visuals */
@@ -586,7 +635,7 @@ function generatePdfHtml(artData){
     const estrategiasHtml = estrategias_control.length ? `<ul style="margin:8px 0 0 18px">${estrategias_control.map(e=>`<li>${e}</li>`).join('')}</ul>` : `<p style="color:#6b7280;font-style:italic">No se seleccionaron estrategias de control.</p>`;
 
     const html =
-`<div style="width:100%;">
+`<div style="width:100%; background:#fff; padding:0; box-sizing:border-box;">
     <div style="display:flex;justify-content:space-between;align-items:flex-start">
         <div>
             <div class="pdf-title">ANÁLISIS DE RIESGOS DE LA TAREA (ART)</div>
@@ -625,7 +674,7 @@ function generatePdfHtml(artData){
     return html;
 }
 
-/* ---------------- Show Preview ---------------- */
+/* ---------------- Show Preview (desktop) ---------------- */
 window.showPdfPreview = function(){
     const artData = collectFormData(true);
     if(!artData) return;
@@ -637,14 +686,73 @@ window.showPdfPreview = function(){
     document.getElementById('pdf-filename-input').value = defaultName;
 }
 
+/* ---------------- Mobile preview: render PDF-HTML to image and show ---------------- */
+async function mobileImagePreviewFlow(){
+    // collect data
+    const artData = collectFormData(true);
+    if(!artData) return;
+
+    // create off-DOM container with the PDF HTML sized to A4 px
+    const tempContainer = document.createElement('div');
+    tempContainer.style.width = '794px';
+    tempContainer.style.minHeight = '1123px';
+    tempContainer.style.boxSizing = 'border-box';
+    tempContainer.style.padding = '0';
+    tempContainer.style.background = '#ffffff';
+    tempContainer.style.color = '#111827';
+    tempContainer.style.margin = '0 auto';
+    tempContainer.innerHTML = generatePdfHtml(artData);
+
+    // attach off-screen (not visible) but in DOM so html2canvas can read fonts/images
+    tempContainer.style.position = 'fixed';
+    tempContainer.style.left = '-9999px';
+    document.body.appendChild(tempContainer);
+
+    try {
+        // render to canvas at scale 2 for quality
+        const canvasImg = await html2canvas(tempContainer, { scale: 2, useCORS: true, backgroundColor: '#ffffff', scrollY: -window.scrollY });
+        const dataUrl = canvasImg.toDataURL('image/png');
+
+        // show in preview modal as image
+        const pdfContent = document.getElementById('pdf-content');
+        pdfContent.innerHTML = `<img src="${dataUrl}" alt="Preview PDF" style="width:100%; height:auto; display:block;"/>`;
+        document.getElementById('pdf-preview-modal').classList.remove('hidden');
+
+        // set default filename
+        const defaultName = `ART_${(new Date()).toISOString().slice(0,10)}_${artData.antecedentes.supervisor.replace(/\s+/g,'_').slice(0,30) || 'ART'}.pdf`;
+        document.getElementById('pdf-filename-input').value = defaultName;
+
+    } catch(err){
+        console.error('Error generando preview-imagen', err);
+        showMessage('Error generando preview en imagen: ' + (err.message || err), 'error');
+    } finally {
+        // remove temp
+        document.body.removeChild(tempContainer);
+    }
+}
+
 /* ---------------- Download PDF (html2pdf) ---------------- */
 async function downloadPdfAndClose(){
     try{
         const artData = collectFormData(true);
         if(!artData) return;
-        document.getElementById('pdf-content').innerHTML = generatePdfHtml(artData);
-        const element = document.getElementById('pdf-content');
 
+        // ensure content up to date
+        const element = document.createElement('div');
+        element.innerHTML = generatePdfHtml(artData);
+        // style to match pdf-page
+        element.style.width = '794px';
+        element.style.minHeight = '1123px';
+        element.style.boxSizing = 'border-box';
+        element.style.padding = '0';
+        element.style.background = '#ffffff';
+
+        // attach off-screen so html2pdf can render it
+        element.style.position = 'fixed';
+        element.style.left = '-9999px';
+        document.body.appendChild(element);
+
+        // filename
         let filename = String(document.getElementById('pdf-filename-input').value || '').trim();
         if(!filename) filename = `ART_${(new Date()).toISOString().slice(0,10)}_${artData.antecedentes.supervisor.replace(/\s+/g,'_').slice(0,30) || 'ART'}.pdf`;
         if(!filename.toLowerCase().endsWith('.pdf')) filename += '.pdf';
@@ -653,17 +761,16 @@ async function downloadPdfAndClose(){
             margin: 0,
             filename: filename,
             image: { type:'jpeg', quality:1 },
-            html2canvas: { scale: 2, useCORS:true, background:'#ffffff', scrollY:0 },
+            html2canvas: { scale: 2, useCORS:true, background: '#ffffff', scrollY: 0 },
             jsPDF: { unit:'mm', format:'a4', orientation:'portrait' },
             pagebreak: { mode:['avoid-all','css','legacy'] }
         };
 
-        const previewActions = document.getElementById('preview-actions');
-        previewActions.classList.add('preview-action-hidden');
-
+        // generate PDF
         await html2pdf().set(opt).from(element).save();
 
-        previewActions.classList.remove('preview-action-hidden');
+        // cleanup
+        document.body.removeChild(element);
         document.getElementById('pdf-preview-modal').classList.add('hidden');
         showMessage(`PDF generado: ${filename}`, 'success');
 
@@ -893,13 +1000,9 @@ function wizardNext(){
     }
     if(wizardStep < document.querySelectorAll('.wizard-step').length-1){ wizardStep++; updateWizardUI(); }
     else {
+        // last: show preview as image (mobile)
         saveDraft();
-        const artData = collectFormData(true);
-        if(!artData) return;
-        document.getElementById('pdf-content').innerHTML = generatePdfHtml(artData);
-        document.getElementById('pdf-preview-modal').classList.remove('hidden');
-        const defaultName = `ART_${(new Date()).toISOString().slice(0,10)}_${artData.antecedentes.supervisor.replace(/\s+/g,'_').slice(0,30) || 'ART'}.pdf`;
-        document.getElementById('pdf-filename-input').value = defaultName;
+        mobileImagePreviewFlow();
     }
 }
 function wizardPrev(){ if(wizardStep>0){ wizardStep--; updateWizardUI(); } }
