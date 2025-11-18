@@ -1,558 +1,668 @@
-<!-- ART_final.html — PARTE 2 -->
 <!doctype html>
 <html lang="es">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>ART - PARTE 2 (HEAD + ESTILOS)</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ART - Análisis de Riesgos de la Tarea</title>
 
   <!-- Tailwind (CDN) -->
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
 
-  <!-- Librerías para PDF / canvas -->
+  <!-- html2pdf + html2canvas -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
   <style>
     :root{ --bg:#f7f7f9; --accent-red:#ef4444; --accent-blue:#0f4b8f; --accent-teal:#0d9488; }
-    html,body{height:100%;}
-    body{font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,'Helvetica Neue',Arial; background:var(--bg); color:#0f172a;}
+    body{ font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial; background:var(--bg); color:#0f172a; -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale; }
 
-    /* PDF page (A4) */
-    .pdf-page{ width:794px; min-height:1123px; background:#fff; margin:0 auto; padding:28px; box-sizing:border-box; }
+    /* PDF A4 container used off-screen (stable, avoids blank pages) */
+    #pdf-render-target{ width:794px; min-height:1123px; box-sizing:border-box; background:#fff; padding:28px; }
 
-    /* Form layout */
+    /* Page and PDF visuals (preview) */
+    .pdf-page{ width:794px; min-height:1123px; background:#fff; margin:0 auto; padding:28px; box-sizing:border-box; color:#111827; font-size:13px; }
+
+    /* Form */
     .field { display:block; width:100%; }
+    .time-row{ display:grid; grid-template-columns:1fr 1fr; gap:1.5rem; }
+    @media(min-width:1024px){ .time-row{ gap:2rem; } }
 
-    /* Selected state (desktop): darker background + outline */
-    .btn-selected{ box-shadow:0 0 0 3px rgba(15,75,143,0.12) inset; transform:translateY(-1px); }
-    .btn-selected.dark{ background-color:#0f4b8f !important; color:white !important; }
+    /* Buttons yes/no selected state */
+    .btn-selected{ box-shadow:0 0 0 3px rgba(15,75,143,0.09) inset; transform:translateY(-1px); }
+    .btn-selected.dark{ background:#0f4b8f !important; color:#fff !important; border-color:transparent !important; }
 
-    /* Make the selected button clearly framed (alternative) */
-    .btn-outline-selected{ border:2px solid rgba(15,75,143,0.18); }
+    /* radios custom look */
+    .answer-btn { padding:.5rem 1rem; border-radius:.5rem; border:1px solid #d1d5db; cursor:pointer; user-select:none; display:inline-flex; align-items:center; gap:.5rem; }
+    .answer-btn input { display:none; }
 
-    /* Time inputs spacing (desktop + mobile) */
-    .time-row{ display:grid; grid-template-columns:1fr 1fr; gap:1rem; }
-    @media (min-width:1024px){ .time-row{ gap:2rem; } }
+    /* Signature prompt */
+    .sig-hint{ display:flex; align-items:center; gap:8px; justify-content:center; padding:10px; border-radius:8px; border:2px dashed #94a3b8; background:#f8fafc; color:#475569; cursor:pointer; }
 
-    /* Signature box hint */
-    .sig-hint{ display:flex; align-items:center; gap:8px; justify-content:center; padding:8px; border-radius:8px; border:2px dashed #94a3b8; background:#f8fafc; color:#475569; }
+    /* Modal */
+    .modal { position:fixed; inset:0; display:flex; align-items:center; justify-content:center; background:rgba(2,6,23,0.6); z-index:60; }
+    .modal-inner { background:#fff; border-radius:12px; padding:18px; width:calc(100% - 40px); max-width:920px; max-height:94vh; overflow:auto; }
 
-    /* Mobile big download button placeholder (hidden on desktop) */
+    /* mobile download button visible only on small screens */
     #mobile-download-btn{ display:none; }
-    @media (max-width:767px){ #mobile-download-btn{ display:inline-block; } }
+    @media(max-width:767px){ #mobile-download-btn{ display:inline-block; } }
 
-    /* Wizard steps visual */
+    /* small helper */
+    .hidden { display:none !important; }
+
+    /* wizard */
     .wizard-step{ display:none; }
     .wizard-step.active{ display:block; }
-
-    /* Modal base */
-    .modal { position:fixed; inset:0; display:flex; align-items:center; justify-content:center; background:rgba(15,23,42,0.6); z-index:60; }
-
-    /* Improve small screens form behaviour */
-    input, textarea, select { font-family:inherit; }
-
-    /* Make desktop radio-like buttons larger on selection */
-    .answer-btn-1-2, .answer-btn-1-3 { min-width:72px; }
-
-    /* Accessibility focus styles */
-    .focus-ring:focus{ outline:3px solid rgba(13,148,136,0.15); outline-offset:2px; }
-
   </style>
 </head>
 <body class="min-h-screen">
-  <div id="app-shell" class="max-w-4xl mx-auto p-6">
+
+  <div class="max-w-4xl mx-auto p-6">
     <header class="mb-6">
       <h1 class="text-2xl font-bold text-gray-800">ART — Análisis de Riesgos de la Tarea</h1>
-      <p class="text-sm text-gray-500">PARTE 2: HEAD y estilos básicos. Pide PARTE 3 cuando quieras.</p>
+      <p class="text-sm text-gray-500">Formulario — Preview y generación de PDF.</p>
     </header>
 
-    <!-- Empezamos el form (PARTE 2 entrega el inicio de body + estructura) -->
-    <main id="form-root">
-      <section id="etapa1">
-        <div class="bg-white p-4 rounded-lg shadow-sm">
-          <h2 class="font-semibold text-lg text-red-600">I) ETAPA 1 — ANTECEDENTES</h2>
-          <div class="mt-3 grid grid-cols-1 md:grid-cols-2 gap-4">
-            <input id="empresa" class="field p-3 border rounded focus:ring focus:ring-red-200" placeholder="NOMBRE DE LA EMPRESA">
-            <input id="supervisor" class="field p-3 border rounded" placeholder="NOMBRE DEL SUPERVISOR">
-            <input id="area" class="field p-3 border rounded" placeholder="ÁREA DE TRABAJO">
-            <input id="lugar_especifico" class="field p-3 border rounded" placeholder="LUGAR ESPECÍFICO">
+    <!-- MAIN FORM (Desktop view shows full; mobile shows wizard) -->
+    <main id="form-area" class="bg-white rounded-lg shadow p-4">
+      <!-- Section: Antecedentes -->
+      <section id="etapa1" class="mb-4">
+        <h2 class="font-semibold text-lg text-red-600 mb-3">I) ETAPA 1 — ANTECEDENTES</h2>
 
-            <div>
-              <label class="block text-sm font-semibold mb-1">FECHA</label>
-              <input id="fecha" type="date" class="p-3 border rounded w-full">
-            </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <input id="empresa" class="field p-3 border rounded" placeholder="NOMBRE DE LA EMPRESA" type="text" />
+          <input id="supervisor" class="field p-3 border rounded" placeholder="NOMBRE DEL SUPERVISOR" type="text" />
+          <input id="area" class="field p-3 border rounded" placeholder="ÁREA DE TRABAJO" type="text" />
+          <input id="lugar_especifico" class="field p-3 border rounded" placeholder="LUGAR ESPECÍFICO" type="text" />
 
-            <div>
-              <label class="block text-sm font-semibold mb-1">HORARIO</label>
-              <div class="time-row">
-                <div>
-                  <label class="text-xs text-gray-500">Hora inicio</label>
-                  <input id="hora_inicio" type="time" class="p-3 border rounded w-full">
-                </div>
-                <div>
-                  <label class="text-xs text-gray-500">Hora término</label>
-                  <input id="hora_termino" type="time" class="p-3 border rounded w-full">
-                </div>
+          <div>
+            <label class="block text-sm font-semibold mb-1">FECHA</label>
+            <input id="fecha" type="date" class="p-3 border rounded w-full" />
+          </div>
+
+          <div>
+            <label class="block text-sm font-semibold mb-1">HORARIO</label>
+            <div class="time-row">
+              <div>
+                <label class="text-xs text-gray-500">Hora inicio</label>
+                <input id="hora_inicio" type="time" class="p-3 border rounded w-full" />
+              </div>
+              <div>
+                <label class="text-xs text-gray-500">Hora término</label>
+                <input id="hora_termino" type="time" class="p-3 border rounded w-full" />
               </div>
             </div>
+          </div>
 
-            <div class="md:col-span-2">
-              <label class="block text-sm font-semibold mb-1">DESCRIPCIÓN</label>
-              <textarea id="descripcion" rows="3" class="p-3 border rounded w-full"></textarea>
+          <div class="md:col-span-2">
+            <label class="block text-sm font-semibold mb-1">DESCRIPCIÓN</label>
+            <textarea id="descripcion" rows="3" class="p-3 border rounded w-full" placeholder="DESCRIPCIÓN DE LA TAREA"></textarea>
+          </div>
+
+          <div class="md:col-span-2">
+            <label class="block text-sm font-semibold mb-1">FIRMA</label>
+            <div id="signature-prompt" class="sig-hint" role="button" tabindex="0" onclick="openSignatureModal();" onkeydown="if(event.key==='Enter') openSignatureModal();">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26M21 8l-7.89 5.26M3 16l7.89-5.26M21 16l-7.89-5.26"/></svg>
+              <span id="signature-prompt-text">Toca para firmar — (móvil: gira a horizontal)</span>
             </div>
-
-            <div class="md:col-span-2">
-              <label class="block text-sm font-semibold mb-1">FIRMA</label>
-              <div id="signature-prompt" class="sig-hint cursor-pointer" role="button" tabindex="0" onclick="openSignatureModal()">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 11c0-2 1-4 3-4s3 2 3 4-1 4-3 4-3-2-3-4z"/></svg>
-                <span id="signature-prompt-text" class="text-sm text-gray-600">Toca para firmar — (móvil: girar a horizontal)</span>
-              </div>
-              <input type="hidden" id="firma_base64">
-            </div>
-
+            <input type="hidden" id="firma_base64" />
+            <div id="signature-preview" class="mt-2 hidden"><img id="signature-thumb" src="" alt="Firma" style="max-width:260px; border:1px solid #ddd; border-radius:6px;" /></div>
           </div>
         </div>
       </section>
 
-      <!-- footer actions (sent here for PARTE 2) -->
+      <!-- Section: 1.2 (Trabajadores) -->
+      <section id="etapa1-2" class="mb-4">
+        <h3 class="font-semibold text-red-600 mb-2">1.2) DE LOS TRABAJADORES: CONTESTE CADA PREGUNTA</h3>
+
+        <div class="space-y-3" id="check-list-1-2">
+          <div class="flex items-center justify-between" data-key="condiciones_fisicas">
+            <div>1. ¿Me encuentro en condiciones físicas y psicológicas para realizar la tarea?</div>
+            <div class="flex gap-2">
+              <label class="answer-btn" data-group="q12_1"><input name="q12_1" type="radio" value="si" /> Sí</label>
+              <label class="answer-btn" data-group="q12_1"><input name="q12_1" type="radio" value="no" /> No</label>
+            </div>
+          </div>
+
+          <div class="flex items-center justify-between" data-key="condiciones_entorno">
+            <div>2. ¿Las condiciones del entorno permiten realizar mi trabajo de manera segura?</div>
+            <div class="flex gap-2">
+              <label class="answer-btn" data-group="q12_2"><input name="q12_2" type="radio" value="si" /> Sí</label>
+              <label class="answer-btn" data-group="q12_2"><input name="q12_2" type="radio" value="no" /> No</label>
+            </div>
+          </div>
+
+          <div class="flex items-center justify-between" data-key="areas_condiciones">
+            <div>3. ¿Verifiqué que las áreas de desplazamiento y trabajo se encuentran en condiciones?</div>
+            <div class="flex gap-2">
+              <label class="answer-btn" data-group="q12_3"><input name="q12_3" type="radio" value="si" /> Sí</label>
+              <label class="answer-btn" data-group="q12_3"><input name="q12_3" type="radio" value="no" /> No</label>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Section: 1.3 (Tarea) -->
+      <section id="etapa1-3" class="mb-4">
+        <h3 class="font-semibold text-blue-600 mb-2">1.3) DE LA TAREA: CONTESTE CADA PREGUNTA</h3>
+
+        <div class="space-y-3" id="check-list-1-3">
+          <div data-key="capacitado_prevencion">
+            <div>1. ¿Estoy capacitado(a) y conozco las medidas de prevención definidas?</div>
+            <div class="flex gap-2 mt-2">
+              <label class="answer-btn" data-group="q13_cap"><input name="q13_cap" type="radio" value="si" /> Sí</label>
+              <label class="answer-btn" data-group="q13_cap"><input name="q13_cap" type="radio" value="no" /> No</label>
+            </div>
+            <p class="text-xs text-red-600 mt-2">UN "NO" EN ESTA PREGUNTA SIGNIFICA <strong>NO INICIAR LA TAREA</strong></p>
+          </div>
+
+          <div data-key="documento_regula" class="mt-3">
+            <div>2. ¿Existe algún documento que regule mi trabajo o tarea?</div>
+            <div class="flex gap-2 mt-2">
+              <label class="answer-btn" data-group="q13"><input name="q13" type="radio" value="si" onchange="toggleQ13()" /> Sí</label>
+              <label class="answer-btn" data-group="q13"><input name="q13" type="radio" value="no" onchange="toggleQ13()" /> No</label>
+            </div>
+            <div id="q13_box" class="hidden mt-2">
+              <textarea id="q13_text" rows="2" class="p-2 border rounded w-full" placeholder="Indique: manual, instructivo, procedimiento..."></textarea>
+            </div>
+          </div>
+
+          <div data-key="alcance_actividades" class="mt-3">
+            <div>3. ¿El documento incluye todas las actividades (alcance) a desarrollar en terreno?</div>
+            <div class="flex gap-2 mt-2">
+              <label class="answer-btn" data-group="q13_alc"><input name="q13_alc" type="radio" value="si" /> Sí</label>
+              <label class="answer-btn" data-group="q13_alc"><input name="q13_alc" type="radio" value="no" /> No</label>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Section: Estrategias -->
+      <section id="etapa1-4" class="mb-4">
+        <h3 class="font-semibold text-teal-700 mb-2">1.4) Estrategias de Control (marque las que apliquen)</h3>
+        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+          <label class="p-3 border rounded flex items-center justify-between gap-2"><span>Aislamiento</span><input type="checkbox" data-strategy-name="Aislamiento" class="strategy-checkbox" /></label>
+          <label class="p-3 border rounded flex items-center justify-between gap-2"><span>Señalización</span><input type="checkbox" data-strategy-name="Señalización" class="strategy-checkbox" /></label>
+          <label class="p-3 border rounded flex items-center justify-between gap-2"><span>Permiso de Trabajo</span><input type="checkbox" data-strategy-name="Permiso de Trabajo" class="strategy-checkbox" /></label>
+          <label class="p-3 border rounded flex items-center justify-between gap-2"><span>Uso de EPP</span><input type="checkbox" data-strategy-name="EPP" class="strategy-checkbox" /></label>
+        </div>
+      </section>
+
+      <!-- Actions -->
       <div class="mt-6 flex items-center justify-between">
-        <div class="text-sm text-gray-500">ID local: <span id="user-id" class="font-mono">---</span></div>
+        <div class="text-sm text-gray-500">ID Local: <span id="user-id" class="font-mono">--</span></div>
         <div class="flex items-center gap-3">
           <button id="preview-art-btn" class="bg-blue-600 text-white px-4 py-2 rounded">Previsualizar</button>
           <button id="load-history-btn" class="bg-gray-200 px-3 py-2 rounded">Historial</button>
         </div>
       </div>
-
     </main>
+
+    <p class="text-sm text-gray-500 mt-4">En móvil: preview = imagen del PDF; firma en modal horizontal para mejorar la experiencia.</p>
   </div>
 
-  <script>
-    // PARTE 2: ligero script para inicializar ID local y evitar PDF en blanco por contenedor faltante
-    document.addEventListener('DOMContentLoaded', ()=>{
-      const userId = 'Local-' + Math.random().toString(16).slice(2,8);
-      document.getElementById('user-id').textContent = userId;
+  <!-- OFF-SCREEN PDF CONTAINER (stable) -->
+  <div id="pdf-render-target" style="position:fixed; left:-9999px; top:0; visibility:hidden;"></div>
 
-      // Ensure a stable PDF container exists to avoid html2pdf producing blank pages
-      if(!document.getElementById('pdf-render-target')){
-        const d=document.createElement('div'); d.id='pdf-render-target'; d.style.position='fixed'; d.style.left='-9999px'; d.style.top='0'; d.style.width='794px'; d.style.minHeight='1123px'; d.style.boxSizing='border-box'; document.body.appendChild(d);
-      }
+  <!-- SIGNATURE MODAL (fullscreen-ish) -->
+  <div id="signature-modal" class="modal hidden" aria-hidden="true">
+    <div class="modal-inner">
+      <div class="flex justify-between items-center mb-2">
+        <h2 class="text-lg font-bold">Firma digital (supervisor)</h2>
+        <button onclick="closeSignatureModal()" class="px-3 py-1 rounded bg-gray-200">Cerrar</button>
+      </div>
+      <p class="text-sm text-gray-600 mb-3">Si estás en móvil, gira el dispositivo a horizontal para firmar con más espacio.</p>
 
-    });
-  </script>
-</body>
-  
-<!-- === PARTE 3 — MODAL DE FIRMA COMPLETA === -->
-<div id="signature-modal" class="modal hidden">
-  <div class="bg-white rounded-lg p-4 w-full max-w-3xl flex flex-col gap-4 relative">
+      <div style="display:flex; justify-content:center; align-items:center;">
+        <canvas id="signature-canvas" width="1200" height="420" style="max-width:100%; border:2px dashed #cbd5e1; border-radius:8px; touch-action:none;"></canvas>
+      </div>
 
-    <h2 class="text-lg font-bold text-gray-800 text-center">Firma del trabajador</h2>
-    <p class="text-sm text-gray-500 text-center">Gira tu teléfono horizontalmente para una mejor experiencia</p>
-
-    <!-- Área de firma -->
-    <div class="w-full flex justify-center">
-      <canvas id="signature-canvas" width="900" height="450" class="border border-gray-300 rounded shadow"></canvas>
+      <div class="flex gap-3 mt-4">
+        <button onclick="clearSignatureCanvas()" class="px-4 py-2 bg-yellow-500 rounded text-white">Borrar</button>
+        <button onclick="saveSignature();" class="px-4 py-2 bg-blue-600 rounded text-white">Guardar y cerrar</button>
+      </div>
     </div>
-
-    <!-- Botones -->
-    <div class="flex justify-between mt-2">
-      <button onclick="clearSignature()" class="px-4 py-2 bg-gray-200 rounded">Borrar</button>
-      <button onclick="closeSignatureModal()" class="px-4 py-2 bg-blue-600 text-white rounded">Aceptar firma</button>
-    </div>
-
   </div>
-</div>
+
+  <!-- PREVIEW MODAL (used for web html preview or mobile image preview) -->
+  <div id="pdf-preview-modal" class="modal hidden" aria-hidden="true">
+    <div class="modal-inner" style="max-width:900px;">
+      <div id="pdf-preview-content" class="mb-4"></div>
+
+      <div class="flex gap-3">
+        <input id="pdf-filename-input" type="text" placeholder="Nombre archivo (opcional)" class="p-2 border rounded w-full" />
+        <button id="download-pdf-btn" class="bg-blue-600 text-white px-4 py-2 rounded">📥 Descargar PDF</button>
+        <button onclick="closePreviewModal()" class="bg-gray-200 px-4 py-2 rounded">Cerrar</button>
+      </div>
+
+      <!-- big mobile download button area (visible on mobile) -->
+      <div class="mt-4 hidden md:block" id="mobile-download-area-placeholder"></div>
+      <div style="margin-top:10px;">
+        <button id="mobile-download-btn" class="w-full bg-green-600 text-white py-3 rounded-lg hidden">📥 Descargar PDF</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- HISTORY modal (minimal) -->
+  <div id="history-modal" class="modal hidden" aria-hidden="true">
+    <div class="modal-inner">
+      <div class="flex justify-between items-center mb-2">
+        <h3 class="text-lg font-bold">Historial local</h3>
+        <button onclick="closeHistoryModal()" class="px-2 py-1 rounded bg-gray-100">Cerrar</button>
+      </div>
+      <div id="history-list"></div>
+      <p class="text-sm text-gray-500 mt-3">Los chequeos se guardan localmente en tu navegador.</p>
+    </div>
+  </div>
 
 <script>
-// === PARTE 3 — FIRMA ===
-let canvas, ctx, drawing = false, rect;
+/* ------------------------ INIT & HELPERS ------------------------ */
+let userId = 'Local-' + Math.random().toString(16).slice(2,8);
+document.getElementById('user-id').textContent = userId;
+
+function isMobile(){ return window.innerWidth < 768; }
+function $(id){ return document.getElementById(id); }
+
+/* ------------------------ Signature canvas ------------------------ */
+let sigCanvas = $('signature-canvas');
+let sigCtx = sigCanvas.getContext('2d');
+let drawing = false;
+let lastX = 0, lastY = 0;
+
+function initSignatureCanvas(){
+  sigCanvas = $('signature-canvas');
+  if(!sigCanvas) return;
+  sigCtx = sigCanvas.getContext('2d');
+  // set line width depending on canvas width
+  const base = Math.max(2, Math.round(sigCanvas.width / 400));
+  sigCtx.lineWidth = base * 2;
+  sigCtx.lineJoin = 'round';
+  sigCtx.lineCap = 'round';
+  sigCtx.strokeStyle = '#111827';
+
+  // pointer events (unified)
+  sigCanvas.addEventListener('pointerdown', startSig);
+  sigCanvas.addEventListener('pointermove', moveSig);
+  sigCanvas.addEventListener('pointerup', endSig);
+  sigCanvas.addEventListener('pointercancel', endSig);
+  sigCanvas.style.touchAction = 'none';
+}
+
+function startSig(e){
+  e.preventDefault();
+  drawing = true;
+  const rect = sigCanvas.getBoundingClientRect();
+  lastX = e.clientX - rect.left;
+  lastY = e.clientY - rect.top;
+  sigCtx.beginPath();
+  sigCtx.moveTo(lastX, lastY);
+}
+function moveSig(e){
+  if(!drawing) return;
+  e.preventDefault();
+  const rect = sigCanvas.getBoundingClientRect();
+  const x = e.clientX - rect.left;
+  const y = e.clientY - rect.top;
+  sigCtx.lineTo(x, y);
+  sigCtx.stroke();
+  lastX = x; lastY = y;
+}
+function endSig(e){
+  drawing = false;
+}
+
+function clearSignatureCanvas(){
+  if(!sigCtx) return;
+  sigCtx.clearRect(0,0,sigCanvas.width, sigCanvas.height);
+}
 
 function openSignatureModal(){
-  const modal = document.getElementById('signature-modal');
+  // enlarge canvas for mobile horizontally if possible
+  const modal = $('signature-modal');
   modal.classList.remove('hidden');
-  setTimeout(initSignatureCanvas, 50);
+  // try to resize canvas for mobile: make it wider if device width > height
+  setTimeout(()=>{
+    if(window.innerWidth < 768){
+      // prefer landscape-like area
+      const w = Math.max(window.innerWidth, window.innerHeight) - 40;
+      const h = Math.floor(window.innerHeight * 0.55);
+      sigCanvas.width = Math.max(900, Math.floor(w));
+      sigCanvas.height = Math.max(240, Math.floor(h));
+    } else {
+      sigCanvas.width = 1200;
+      sigCanvas.height = 420;
+    }
+    // reset drawing context scaled to new size
+    initSignatureCanvas();
+  }, 50);
 }
 
 function closeSignatureModal(){
-  const modal = document.getElementById('signature-modal');
-  modal.classList.add('hidden');
-  saveSignature();
+  $('signature-modal').classList.add('hidden');
 }
-
-function initSignatureCanvas(){
-  canvas = document.getElementById('signature-canvas');
-  ctx = canvas.getContext('2d');
-  rect = canvas.getBoundingClientRect();
-
-  ctx.lineWidth = 3;
-  ctx.lineCap = 'round';
-  ctx.strokeStyle = '#000';
-
-  canvas.addEventListener('touchstart', startDraw);
-  canvas.addEventListener('touchmove', draw);
-  canvas.addEventListener('touchend', stopDraw);
-  canvas.addEventListener('mousedown', startDraw);
-  canvas.addEventListener('mousemove', draw);
-  canvas.addEventListener('mouseup', stopDraw);
-}
-
-function startDraw(e){
-  e.preventDefault();
-  drawing = true;
-  const pos = getPos(e);
-  ctx.beginPath();
-  ctx.moveTo(pos.x, pos.y);
-}
-function draw(e){
-  if(!drawing) return;
-  const pos = getPos(e);
-  ctx.lineTo(pos.x, pos.y);
-  ctx.stroke();
-}
-function stopDraw(){ drawing = false; }
-
-function getPos(e){
-  const touch = e.touches ? e.touches[0] : e;
-  return {
-    x: touch.clientX - rect.left,
-    y: touch.clientY - rect.top
-  };
-}
-
-function clearSignature(){ ctx.clearRect(0,0,canvas.width,canvas.height); }
 
 function saveSignature(){
-  const base64 = canvas.toDataURL();
-  document.getElementById('firma_base64').value = base64;
-  document.getElementById('signature-prompt-text').textContent = "Firma capturada";
-}
-</script>
-
-
-<!-- === PARTE 4 — WIZARD + VALIDACIONES + RECUADROS === -->
-<script>
-// ==========================
-// WIZARD MOBILE / DESKTOP
-// ==========================
-let currentStep = 1;
-
-function showStep(n){
-  document.querySelectorAll('.wizard-step').forEach(s => s.classList.remove('active'));
-  const step = document.getElementById('step-'+n);
-  if(step) step.classList.add('active');
-  currentStep = n;
+  // grab a white background snapshot so the signature displays well in PDF
+  const tmp = document.createElement('canvas');
+  tmp.width = sigCanvas.width;
+  tmp.height = sigCanvas.height;
+  const tctx = tmp.getContext('2d');
+  tctx.fillStyle = '#ffffff';
+  tctx.fillRect(0,0,tmp.width,tmp.height);
+  tctx.drawImage(sigCanvas, 0, 0);
+  const data = tmp.toDataURL('image/png');
+  $('firma_base64').value = data;
+  // show thumbnail
+  $('signature-thumb').src = data;
+  $('signature-preview').classList.remove('hidden');
+  $('signature-prompt-text').textContent = 'Firma capturada';
+  closeSignatureModal();
 }
 
-function nextStep(){
-  if(!validateStep(currentStep)) return;
-  showStep(currentStep+1);
-}
-
-function prevStep(){
-  showStep(currentStep-1);
-}
-
-// ==========================
-// VALIDACIONES DE "NO"
-// ==========================
-function validateStep(n){
-  // Paso 1.2
-  if(n === 2){
-    const r1 = document.querySelector('input[name="q12_1"]:checked');
-    const r2 = document.querySelector('input[name="q12_2"]:checked');
-    const r3 = document.querySelector('input[name="q12_3"]:checked');
-    if(!r1 || !r2 || !r3){ alert("Debe responder todas las preguntas."); return false; }
-  }
-
-  // Paso 1.3
-  if(n === 3){
-    const op = document.querySelector('input[name="q13"]:checked');
-    if(!op){ alert("Debe responder Sí o No."); return false; }
-    if(op.value === "si"){
-      const txt = document.getElementById('q13_text').value.trim();
-      if(!txt){ alert("Debe completar el recuadro."); return false; }
-    }
-  }
-
-  return true;
-}
-
-// ==========================
-// MOSTRAR / OCULTAR RECUADRO DE 1.3
-// ==========================
-function toggleQ13(){
-  const op = document.querySelector('input[name="q13"]:checked');
-  const box = document.getElementById('q13_box');
-  if(op && op.value === "si") box.classList.remove('hidden');
-  else box.classList.add('hidden');
-}
-</script>
-
-<!-- === HTML WIZARD (AÑADIDO) === -->
-<section id="wizard-wrapper" class="mt-10">
-  <!-- PASO 1.2 -->
-  <div id="step-2" class="wizard-step">
-    <h3 class="text-lg font-semibold text-teal-700">1.2) Riesgos generales</h3>
-
-    <!-- Preguntas Sí/No uniformadas -->
-    <div class="mt-4">
-      <p class="font-medium">¿Condiciones inseguras?</p>
-      <div class="flex gap-3 mt-2">
-        <label class="px-4 py-2 border rounded cursor-pointer answer-btn-1-2">
-          <input type="radio" name="q12_1" value="si" class="hidden">Sí
-        </label>
-        <label class="px-4 py-2 border rounded cursor-pointer answer-btn-1-2">
-          <input type="radio" name="q12_1" value="no" class="hidden">No
-        </label>
-      </div>
-    </div>
-
-    <div class="mt-4">
-      <p class="font-medium">¿Equipos en mal estado?</p>
-      <div class="flex gap-3 mt-2">
-        <label class="px-4 py-2 border rounded cursor-pointer answer-btn-1-2">
-          <input type="radio" name="q12_2" value="si" class="hidden">Sí
-        </label>
-        <label class="px-4 py-2 border rounded cursor-pointer answer-btn-1-2">
-          <input type="radio" name="q12_2" value="no" class="hidden">No
-        </label>
-      </div>
-    </div>
-
-    <div class="mt-4">
-      <p class="font-medium">¿Falta de señalización?</p>
-      <div class="flex gap-3 mt-2">
-        <label class="px-4 py-2 border rounded cursor-pointer answer-btn-1-2">
-          <input type="radio" name="q12_3" value="si" class="hidden">Sí
-        </label>
-        <label class="px-4 py-2 border rounded cursor-pointer answer-btn-1-2">
-          <input type="radio" name="q12_3" value="no" class="hidden">No
-        </label>
-      </div>
-    </div>
-
-    <div class="flex justify-between mt-6">
-      <button onclick="prevStep()" class="px-4 py-2 bg-gray-200 rounded">Anterior</button>
-      <button onclick="nextStep()" class="px-4 py-2 bg-blue-600 text-white rounded">Siguiente</button>
-    </div>
-  </div>
-
-  <!-- PASO 1.3 -->
-  <div id="step-3" class="wizard-step">
-    <h3 class="text-lg font-semibold text-red-700">1.3) ¿Existe un documento que regule mi trabajo?</h3>
-
-    <div class="flex gap-3 mt-4">
-      <label class="px-4 py-2 border rounded cursor-pointer answer-btn-1-3">
-        <input type="radio" name="q13" value="si" onchange="toggleQ13()" class="hidden">Sí
-      </label>
-
-      <label class="px-4 py-2 border rounded cursor-pointer answer-btn-1-3">
-        <input type="radio" name="q13" value="no" onchange="toggleQ13()" class="hidden">No
-      </label>
-    </div>
-
-    <div id="q13_box" class="hidden mt-4">
-      <textarea id="q13_text" rows="3" class="w-full p-3 border rounded" placeholder="Especifique el documento..."></textarea>
-    </div>
-
-    <div class="flex justify-between mt-6">
-      <button onclick="prevStep()" class="px-4 py-2 bg-gray-200 rounded">Anterior</button>
-      <button onclick="nextStep()" class="px-4 py-2 bg-blue-600 text-white rounded">Siguiente</button>
-    </div>
-  </div>
-</section>
-
-
-<!-- === PARTE 5 — PREVIEW + PDF REAL SIN BLANCO + PREVIEW MÓVIL COMO IMAGEN === -->
-
-<script>
-// ===============================================
-//   GENERAR HTML DEL PDF (PLANTILLA A4 REAL)
-// ===============================================
-function buildPDFHtml(){
-  const firma = document.getElementById('firma_base64').value;
-
-  return `
-  <div class="pdf-page">
-    <h1 style="font-size:20px; font-weight:700; color:#0f4b8f;">ANÁLISIS DE RIESGOS DE LA TAREA (ART)</h1>
-
-    <h3 style="margin-top:20px; font-weight:600; color:#ef4444;">I) ANTECEDENTES</h3>
-    <p><b>Empresa:</b> ${empresa.value}</p>
-    <p><b>Supervisor:</b> ${supervisor.value}</p>
-    <p><b>Área:</b> ${area.value}</p>
-    <p><b>Lugar:</b> ${lugar_especifico.value}</p>
-    <p><b>Fecha:</b> ${fecha.value}</p>
-    <p><b>Hora inicio:</b> ${hora_inicio.value} — <b>Hora término:</b> ${hora_termino.value}</p>
-
-    <p style="margin-top:15px;"><b>Descripción:</b><br>${descripcion.value}</p>
-
-    <div style="margin-top:20px;">
-      <b>Firma:</b><br>
-      ${firma ? `<img src="${firma}" style="width:260px; height:auto; border:1px solid #ddd;">` : '(sin firma)'}
-    </div>
-
-    <h3 style="margin-top:30px; font-weight:600; color:#0d9488;">1.2) Riesgos generales</h3>
-    <p><b>Condiciones inseguras:</b> ${getAnswerText('q12_1')}</p>
-    <p><b>Equipos mal estado:</b> ${getAnswerText('q12_2')}</p>
-    <p><b>Falta señalización:</b> ${getAnswerText('q12_3')}</p>
-
-    <h3 style="margin-top:30px; font-weight:600; color:#7f1d1d;">1.3) Documento regulador</h3>
-    <p><b>¿Existe documento?:</b> ${getAnswerText('q13')}</p>
-    ${getAnswerText('q13') === 'si' ? `<p><b>Documento:</b> ${q13_text.value}</p>` : ''}
-  </div>`;
-}
-
-function getAnswerText(name){
-  const r = document.querySelector(`input[name="${name}"]:checked`);
-  return r ? r.value : '(no indicado)';
-}
-
-// ===============================================
-//  PREVIEW — DESKTOP = HTML, MÓVIL = IMAGEN PNG
-// ===============================================
-function openPreview(){
-  const html = buildPDFHtml();
-  const target = document.getElementById('pdf-render-target');
-  target.innerHTML = html;
-
-  if(isMobile()){
-    generateMobilePreview();
-  } else {
-    generateDesktopPreview();
-  }
-}
-
-function isMobile(){ return window.innerWidth < 768; }
-
-// -------------------------
-// PREVIEW DESKTOP (HTML)
-// -------------------------
-function generateDesktopPreview(){
-  let w = window.open('', '_blank');
-  w.document.write(`
-    <html><head><title>Preview ART</title></head>
-    <body style="margin:0; padding:0; background:#eee;">
-      ${document.getElementById('pdf-render-target').innerHTML}
-      <button onclick="window.parent.generatePDF()" style="position:fixed; bottom:20px; right:20px; padding:12px 20px; background:#0f4b8f; color:white; border:none; border-radius:8px;">Descargar PDF</button>
-    </body>
-<!-- === PARTE 6 — AJUSTES FINALES, LIMPIEZA, FIXES DE BOTONES SÍ/NO === -->
-<script>
-// ===============================================
-// DESTACAR BOTONES SÍ / NO AL SELECCIONAR (WEB + MÓVIL)
-// ===============================================
-function enhanceRadioSelectors(){
-  const groups = ["q12_1","q12_2","q12_3","q13"];
-
-  groups.forEach(name=>{
-    document.querySelectorAll(`input[name="${name}"]`).forEach(r=>{
-      r.addEventListener('change', ()=>{
-        document.querySelectorAll(`input[name="${name}"]`).forEach(x=>{
-          x.parentElement.classList.remove('btn-selected','dark');
-        });
-        r.parentElement.classList.add('btn-selected','dark');
+/* ------------------------ Answer selection visuals ------------------------ */
+function enhanceAnswerButtons(){
+  // add click handler on answer labels to toggle selected styles
+  document.querySelectorAll('.answer-btn').forEach(lbl=>{
+    lbl.addEventListener('click', (e)=>{
+      // find input inside
+      const inp = lbl.querySelector('input');
+      if(!inp) return;
+      // mark the radio (works even if hidden)
+      inp.checked = true;
+      // clear siblings of same name
+      const name = inp.name;
+      document.querySelectorAll(`input[name="${name}"]`).forEach(r=>{
+        if(r !== inp && r.parentElement) r.parentElement.classList.remove('btn-selected','dark');
       });
+      // apply selected style
+      lbl.classList.add('btn-selected','dark');
     });
   });
 }
-enhanceRadioSelectors();
+enhanceAnswerButtons();
 
-// ===============================================
-// MOSTRAR AUTOMÁTICAMENTE EL PRIMER PASO DEL WIZARD EN MÓVIL
-// ===============================================
-if(window.innerWidth < 768){ showStep(2); }
-
-// ===============================================
-// SEPARACIÓN EXTRA PARA HORARIOS EN MÓVIL
-// ===============================================
-function fixTimeSpacing(){
-  document.querySelectorAll('.time-row').forEach(row=>{
-    row.style.gap = window.innerWidth < 768 ? '1.5rem' : '2rem';
-  });
-}
-fixTimeSpacing();
-window.addEventListener('resize', fixTimeSpacing);
-
-// ===============================================
-// EVITAR QUE EL PDF SE GENERE EN BLANCO AUNQUE EL USUARIO NO ESPERE
-// ===============================================
-function ensurePDFContainer(){
-  const t=document.getElementById('pdf-render-target');
-  if(!t){
-    const d=document.createElement('div');
-    d.id='pdf-render-target';
-    d.style.position='fixed'; d.style.left='-9999px'; d.style.top='0';
-    d.style.width='794px'; d.style.minHeight='1123px';
-    document.body.appendChild(d);
+/* ------------------------ Toggle recuadro 1.3 ------------------------ */
+function toggleQ13(){
+  const op = document.querySelector('input[name="q13"]:checked');
+  const box = $('q13_box');
+  if(op && op.value === 'si'){
+    box.classList.remove('hidden');
+    $('q13_text').focus();
+  } else {
+    box.classList.add('hidden');
+    $('q13_text').value = '';
   }
 }
-ensurePDFContainer();
 
-// ===============================================
-// SANITY CHECK: ADVERTIR SI FALTA LA FIRMA
-// ===============================================
-function checkSignatureBeforePDF(){
-  if(!document.getElementById('firma_base64').value){
-    return confirm("No ha firmado aún. ¿Desea generar el PDF igualmente?");
+/* ------------------------ Validation logic ------------------------ */
+function validateAllBeforePreview(){
+  // required text fields
+  const required = ['empresa','supervisor','area','lugar_especifico','fecha','hora_inicio','hora_termino','descripcion'];
+  for(const id of required){
+    const v = $(id).value || '';
+    if(!v.trim()){
+      alert('Complete el campo: ' + id.toUpperCase());
+      return false;
+    }
   }
+
+  // check 1.2 radios are all answered
+  const q12 = ['q12_1','q12_2','q12_3'];
+  for(const name of q12){
+    if(!document.querySelector(`input[name="${name}"]:checked`)){
+      alert('Debe responder todas las preguntas en 1.2');
+      return false;
+    }
+    // if any is 'no' block (user wanted 'No' to alert)
+    const val = document.querySelector(`input[name="${name}"]:checked`).value;
+    if(val === 'no'){
+      alert('Hay una respuesta "No" en 1.2 — NO INICIAR LA TAREA.');
+      return false;
+    }
+  }
+
+  // 1.3 capacitado_prevencion must be yes
+  const cap = document.querySelector('input[name="q13_cap"]:checked');
+  if(!cap){ alert('Responda si está capacitado en 1.3.1'); return false; }
+  if(cap.value === 'no'){ alert('Respuesta "No" en 1.3.1 — NO INICIAR LA TAREA.'); return false; }
+
+  // 1.3 document regulation
+  const q13 = document.querySelector('input[name="q13"]:checked');
+  if(!q13){ alert('Responda la pregunta sobre documento regulador (1.3.2)'); return false; }
+  if(q13.value === 'si'){
+    const txt = $('q13_text').value.trim();
+    if(!txt){ alert('Si respondió "Sí" en 1.3.2, indique el documento en el recuadro.'); return false; }
+  }
+
+  // signature required (but we can allow user to confirm if missing)
+  if(!$('firma_base64').value){
+    if(!confirm('No ha firmado aún. ¿Desea continuar sin firmar?')) return false;
+  }
+
   return true;
 }
 
-// Reemplazar generatePDF para incluir esta validación
-const oldGeneratePDF = generatePDF;
-generatePDF = function(){ if(checkSignatureBeforePDF()) oldGeneratePDF(); };
-</script>
+/* ------------------------ Build PDF HTML (A4 template) ------------------------ */
+function buildPDFHtml(){
+  const antecedentes = {
+    empresa: $('empresa').value || '',
+    supervisor: $('supervisor').value || '',
+    area: $('area').value || '',
+    lugar_especifico: $('lugar_especifico').value || '',
+    fecha: $('fecha').value || '',
+    hora_inicio: $('hora_inicio').value || '',
+    hora_termino: $('hora_termino').value || '',
+    descripcion: $('descripcion').value || '',
+    firma: $('firma_base64').value || ''
+  };
 
-</html>`);
-  w.document.close();
+  function ans(name){ const r = document.querySelector(`input[name="${name}"]:checked`); return r ? r.value : '(no indicado)'; }
+
+  const q13doc = ans('q13') === 'si' ? $('q13_text').value.trim() : '';
+
+  // Return sanitized HTML for PDF
+  return `
+  <div class="pdf-page" style="font-family:Inter,Arial,Helvetica,sans-serif;color:#111827;">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start">
+      <div>
+        <div style="font-size:18px;font-weight:700;color:${'var(--accent-blue)'}">ANÁLISIS DE RIESGOS DE LA TAREA (ART)</div>
+        <div style="font-size:11px;color:#6b7280;margin-top:6px;">Generado: ${new Date().toLocaleString()} - Usuario: ${userId}</div>
+      </div>
+      <div style="text-align:right;">
+        <!-- simple logo circle -->
+        <svg width="72" height="72" viewBox="0 0 72 72" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="36" cy="36" r="34" fill="#f3f4f6" stroke="#cbd5e1" stroke-width="2"/>
+          <text x="36" y="40" font-size="9" font-family="Inter, sans-serif" font-weight="700" text-anchor="middle" fill="#374151">TU LOGO</text>
+        </svg>
+      </div>
+    </div>
+
+    <h3 style="margin-top:18px;color:#b91c1c;border-bottom:2px solid #ef4444;padding-bottom:6px;">I) ANTECEDENTES</h3>
+    <div style="margin-top:8px;">
+      <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #eef2f7;"><div style="width:40%;font-weight:700;color:#374151">Empresa</div><div style="width:60%;text-align:right">${antecedentes.empresa}</div></div>
+      <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #eef2f7;"><div style="width:40%;font-weight:700;color:#374151">Supervisor</div><div style="width:60%;text-align:right">${antecedentes.supervisor}</div></div>
+      <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #eef2f7;"><div style="width:40%;font-weight:700;color:#374151">Área</div><div style="width:60%;text-align:right">${antecedentes.area}</div></div>
+      <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #eef2f7;"><div style="width:40%;font-weight:700;color:#374151">Lugar</div><div style="width:60%;text-align:right">${antecedentes.lugar_especifico}</div></div>
+      <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #eef2f7;"><div style="width:40%;font-weight:700;color:#374151">Fecha</div><div style="width:60%;text-align:right">${antecedentes.fecha}</div></div>
+      <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #eef2f7;"><div style="width:40%;font-weight:700;color:#374151">Horario</div><div style="width:60%;text-align:right">${antecedentes.hora_inicio} - ${antecedentes.hora_termino}</div></div>
+    </div>
+
+    <div style="margin-top:12px;">
+      <div style="font-weight:700">Descripción</div>
+      <div style="border:1px solid #eef2f7;padding:8px;margin-top:6px;background:#f8fafc">${antecedentes.descripcion}</div>
+    </div>
+
+    <div style="margin-top:12px;">
+      <div style="font-weight:700">Firma del supervisor</div>
+      <div style="border:1px solid #1f2937;padding:8px;margin-top:6px;height:100px;display:flex;align-items:center;justify-content:center;background:#fff;">
+        ${antecedentes.firma ? `<img src="${antecedentes.firma}" style="max-width:100%;max-height:90px;object-fit:contain;" />` : '(sin firma)'}
+      </div>
+    </div>
+
+    <h3 style="margin-top:18px;color:#b91c1c;border-bottom:2px solid #ef4444;padding-bottom:6px;">1.2) Riesgos generales</h3>
+    <div style="margin-top:8px;">
+      <div style="padding:6px 0;border-bottom:1px dashed #eef2f7;"><strong>Condiciones inseguras:</strong> ${(document.querySelector('input[name=\"q12_1\"]:checked')||{}).value || '(no indicado)'}</div>
+      <div style="padding:6px 0;border-bottom:1px dashed #eef2f7;"><strong>Equipos en mal estado:</strong> ${(document.querySelector('input[name=\"q12_2\"]:checked')||{}).value || '(no indicado)'}</div>
+      <div style="padding:6px 0;border-bottom:1px dashed #eef2f7;"><strong>Falta señalización:</strong> ${(document.querySelector('input[name=\"q12_3\"]:checked')||{}).value || '(no indicado)'}</div>
+    </div>
+
+    <h3 style="margin-top:18px;color:#0f4b8f;border-bottom:2px solid #0f4b8f;padding-bottom:6px;">1.3) De la tarea</h3>
+    <div style="margin-top:8px;">
+      <div style="padding:6px 0;border-bottom:1px dashed #eef2f7;"><strong>Capacitado:</strong> ${(document.querySelector('input[name=\"q13_cap\"]:checked')||{}).value || '(no indicado)'}</div>
+      <div style="padding:6px 0;border-bottom:1px dashed #eef2f7;"><strong>Existe documento:</strong> ${(document.querySelector('input[name=\"q13\"]:checked')||{}).value || '(no indicado)'}</div>
+      ${q13doc ? `<div style="padding:6px 0;border-bottom:1px dashed #eef2f7;"><strong>Documento:</strong> ${q13doc}</div>` : ''}
+    </div>
+
+    <h3 style="margin-top:18px;color:#0d9488;border-bottom:2px solid #0d9488;padding-bottom:6px;">1.4) Estrategias aplicadas</h3>
+    <div style="margin-top:8px;">
+      <ul>
+        ${Array.from(document.querySelectorAll('.strategy-checkbox')).filter(cb => cb.checked).map(cb => `<li>${cb.getAttribute('data-strategy-name')}</li>`).join('') || '<li>No se seleccionaron estrategias</li>'}
+      </ul>
+    </div>
+
+  </div>
+  `;
 }
 
-// -------------------------
-// PREVIEW MÓVIL (IMAGEN)
-// -------------------------
-async function generateMobilePreview(){
-  const target = document.getElementById('pdf-render-target');
-  const canvas = await html2canvas(target, {scale:2});
-  const img = canvas.toDataURL('image/png');
+/* ------------------------ Preview & PDF generation ------------------------ */
 
-  showMobilePreview(img);
+function openPreview(){
+  if(!validateAllBeforePreview()) return;
+  // build HTML and put into off-screen target
+  const html = buildPDFHtml();
+  const target = $('pdf-render-target');
+  target.innerHTML = html;
+
+  if(isMobile()){
+    // generate image preview
+    html2canvas(target, {scale: 2, useCORS: true, backgroundColor:'#ffffff'}).then(canvas => {
+      const img = canvas.toDataURL('image/png');
+      showMobilePreview(img);
+    }).catch(err => { alert('Error generando preview móvil: ' + (err.message || err)); });
+  } else {
+    // web: show HTML in modal with download button
+    $('pdf-preview-content').innerHTML = target.innerHTML;
+    $('pdf-filename-input').value = `ART_${new Date().toISOString().slice(0,10)}_${$('supervisor').value.replace(/\s+/g,'_').slice(0,30) || 'ART'}.pdf`;
+    showPreviewModal();
+  }
 }
 
-function showMobilePreview(img){
+/* Mobile preview modal */
+function showMobilePreview(imgData){
+  // create a modal-like overlay with image and big download
   const modal = document.createElement('div');
   modal.className = 'modal';
+  modal.style.zIndex = 1000;
   modal.innerHTML = `
-    <div class="bg-white p-4 rounded-lg max-w-lg w-full text-center">
-      <img src="${img}" class="w-full rounded border" />
-      <button onclick="generatePDF()" class="mt-4 w-full bg-teal-600 text-white py-3 rounded-lg">DESCARGAR PDF</button>
-      <button onclick="this.parentElement.parentElement.remove()" class="mt-2 w-full bg-gray-200 py-2 rounded-lg">Cerrar</button>
-    </div>`;
-
+    <div class="modal-inner" style="max-width:640px;">
+      <div style="text-align:right;"><button onclick="this.closest('.modal').remove()" class="px-2 py-1 rounded bg-gray-100">Cerrar</button></div>
+      <img src="${imgData}" style="width:100%; border-radius:8px; border:1px solid #e6e6e6;" />
+      <div style="margin-top:12px;">
+        <button id="mobile-download-now" class="w-full bg-green-600 text-white py-3 rounded-lg">📥 Descargar PDF</button>
+      </div>
+    </div>
+  `;
   document.body.appendChild(modal);
+  // download callback
+  modal.querySelector('#mobile-download-now').addEventListener('click', ()=>{
+    // build pdf and download
+    generatePDF();
+    modal.remove();
+  });
 }
 
-// ===============================================
-//  GENERAR PDF FINAL (MÓVIL + WEB)
-// ===============================================
+/* Desktop preview modal functions */
+function showPreviewModal(){ $('pdf-preview-modal').classList.remove('hidden'); }
+function closePreviewModal(){ $('pdf-preview-modal').classList.add('hidden'); }
+function showHistoryModal(){ $('history-modal').classList.remove('hidden'); }
+function closeHistoryModal(){ $('history-modal').classList.add('hidden'); }
+
+/* Download PDF (common) */
 function generatePDF(){
-  const html = buildPDFHtml();
-  const target = document.getElementById('pdf-render-target');
-  target.innerHTML = html;
+  // check signature confirm
+  if(!$('firma_base64').value){
+    if(!confirm('La firma no está capturada. ¿Desea generar igual el PDF?')) return;
+  }
+  const target = $('pdf-render-target');
+  // ensure target already has content
+  if(!target.innerHTML || target.innerHTML.trim()==='') target.innerHTML = buildPDFHtml();
 
   const opt = {
     margin: 10,
-    filename: `ART_${Date.now()}.pdf`,
-    html2canvas: {scale:2},
-    jsPDF: {unit:'pt', format:'a4', orientation:'portrait'}
+    filename: ($('pdf-filename-input').value.trim() || `ART_${new Date().toISOString().slice(0,10)}.pdf`),
+    image: { type: 'jpeg', quality: 1 },
+    html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff' },
+    jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+    pagebreak: { mode: ['avoid-all','css','legacy'] }
   };
 
-  html2pdf().set(opt).from(target).save();
+  // produce the PDF
+  html2pdf().set(opt).from(target).save().then(()=>{
+    alert('PDF generado correctamente.');
+  }).catch(err => {
+    alert('Error al generar PDF: ' + (err.message || err));
+    console.error(err);
+  });
 }
 
-// ===============================================
-// BOTÓN DE PREVIEW PRINCIPAL
-// ===============================================
-document.getElementById('preview-art-btn').addEventListener('click', openPreview);
-</script>
+/* ------------------------ History (localStorage simple) ------------------------ */
+const ART_HISTORY_KEY = 'art_chequeos_history';
+function saveToHistory(obj){
+  const arr = JSON.parse(localStorage.getItem(ART_HISTORY_KEY) || '[]');
+  arr.push(obj);
+  localStorage.setItem(ART_HISTORY_KEY, JSON.stringify(arr));
+}
+function loadHistory(){
+  const arr = JSON.parse(localStorage.getItem(ART_HISTORY_KEY) || '[]');
+  const list = $('history-list');
+  list.innerHTML = '';
+  if(arr.length === 0){ list.innerHTML = '<p class="text-sm text-gray-500">No hay registros.</p>'; return; }
+  arr.slice().reverse().forEach(item => {
+    const el = document.createElement('div');
+    el.className = 'p-3 border rounded mb-2';
+    el.innerHTML = `<div><strong>${item.antecedentes?.empresa || 'Sin empresa'}</strong> — ${new Date(item.timestamp).toLocaleString()}</div><div class="mt-1 text-sm text-gray-500">${item.antecedentes?.area || ''}</div>`;
+    list.appendChild(el);
+  });
+}
 
+/* ------------------------ Utilities ------------------------ */
+/* toggle Q13 when loaded (in case preselected) */
+function restoreStateUI(){
+  // apply selected classes to any checked radios (for direct load)
+  document.querySelectorAll('input[type="radio"]').forEach(r=>{
+    if(r.checked && r.parentElement) r.parentElement.classList.add('btn-selected','dark');
+  });
+  toggleQ13();
+}
+restoreStateUI();
+
+/* attach events on dynamic buttons */
+$('preview-art-btn').addEventListener('click', openPreview);
+$('download-pdf-btn').addEventListener('click', generatePDF);
+$('load-history-btn').addEventListener('click', ()=>{ loadHistory(); showHistoryModal(); });
+
+/* init signature canvas */
+initSignatureCanvas();
+
+/* ensure pdf container exists */
+if(!$('pdf-render-target')) {
+  const d = document.createElement('div');
+  d.id='pdf-render-target';
+  d.style.position='fixed'; d.style.left='-9999px'; d.style.top='0';
+  d.style.width='794px'; d.style.minHeight='1123px';
+  document.body.appendChild(d);
+}
+
+/* prevent forms / default button submits (no real forms used, but to be safe) */
+document.addEventListener('submit', e => e.preventDefault());
+
+/* Final helper: ensure time spacing recalculation on resize */
+window.addEventListener('resize', () => {
+  document.querySelectorAll('.time-row').forEach(row=>{
+    row.style.gap = window.innerWidth < 768 ? '1.5rem' : '2rem';
+  });
+});
+
+</script>
+</body>
 </html>
