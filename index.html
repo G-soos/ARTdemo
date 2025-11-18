@@ -1,1083 +1,1037 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>Análisis de Riesgos de la Tarea (ART)</title>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>ART - Análisis de Riesgos de la Tarea (final)</title>
 
-    <!-- Tailwind -->
-    <script src="https://cdn.tailwindcss.com"></script>
+<!-- Tailwind -->
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
 
-    <!-- Google font -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+<!-- html2pdf + html2canvas -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
-    <!-- html2pdf (para generar PDF en cliente) -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-    <!-- html2canvas (usado para generar preview-imagen en móvil) -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<style>
+:root { --bg:#f7f7f9; --accent-red:#ef4444; --accent-blue:#0f4b8f; --accent-teal:#0d9488; }
+body { font-family: 'Inter', sans-serif; background: var(--bg); color:#111827; -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale; }
+.container-max { max-width:1100px; margin:0 auto; }
 
-    <style>
-        :root { --bg:#f7f7f9; --accent-red:#ef4444; --accent-blue:#0f4b8f; --accent-teal:#0d9488; }
-        body { font-family: 'Inter', sans-serif; background: var(--bg); color:#111827; -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale; }
-        .pdf-page { width:794px; min-height:1123px; background:#fff; margin:0 auto; padding:32px; box-sizing:border-box; /* border removed for PDF generation */ color:#1f2937; font-size:13px; }
-        .pdf-header{ display:flex; justify-content:space-between; align-items:flex-start; gap:20px; }
-        .pdf-title{ color:#b91c1c; font-weight:700; font-size:18px; }
-        .pdf-subtitle{ font-size:11px; color:#6b7280; margin-top:6px; }
-        .pdf-section-title{ font-weight:700; color:var(--accent-blue); margin-top:18px; margin-bottom:8px; font-size:14px; border-bottom:2px solid var(--accent-red); padding-bottom:6px; }
-        .pdf-data-item{ display:flex; justify-content:space-between; border-bottom:1px solid #eef2f7; padding:6px 0; }
-        .pdf-data-label{ font-weight:700; color:#374151; width:40%; }
-        .pdf-data-value{ text-align:right; width:60%; color:#111827; }
-        .pdf-signature-box{ border:1px solid #1f2937; padding:6px; margin-top:10px; height:100px; display:flex; align-items:center; justify-content:center; }
+/* PDF page */
+.pdf-page { width:794px; min-height:1123px; background:#fff; margin:0 auto; padding:32px; box-sizing:border-box; color:#1f2937; font-size:13px; }
+.pdf-header{ display:flex; justify-content:space-between; align-items:flex-start; gap:20px; }
+.pdf-title{ color:#b91c1c; font-weight:700; font-size:18px; }
+.pdf-subtitle{ font-size:11px; color:#6b7280; margin-top:6px; }
+.pdf-section-title{ font-weight:700; color:var(--accent-blue); margin-top:18px; margin-bottom:8px; font-size:14px; border-bottom:2px solid var(--accent-red); padding-bottom:6px; }
+.pdf-data-item{ display:flex; justify-content:space-between; border-bottom:1px solid #eef2f7; padding:6px 0; }
+.pdf-data-label{ font-weight:700; color:#374151; width:40%; }
+.pdf-data-value{ text-align:right; width:60%; color:#111827; }
+.pdf-signature-box{ border:1px solid #1f2937; padding:6px; margin-top:10px; height:100px; display:flex; align-items:center; justify-content:center; }
 
-        .strategy-box{ display:flex; align-items:center; justify-content:center; height:100px; border:2px solid #cbd5e1; border-radius:.5rem; text-align:center; font-weight:600; cursor:pointer; transition:all .2s; position:relative; background:#f8fafc; color:#475569; }
-        .strategy-box.selected{ border-color:var(--accent-teal); background:#ccfbf1; color:#0f766e; box-shadow:0 4px 6px rgba(0,0,0,.08); }
-        .strategy-checkbox{ position:absolute; top:8px; right:8px; width:1.25rem; height:1.25rem; accent-color:var(--accent-teal); }
+/* Strategy boxes */
+.strategy-box{ display:flex; align-items:center; justify-content:center; height:100px; border:2px solid #cbd5e1; border-radius:.5rem; text-align:center; font-weight:600; cursor:pointer; transition:all .2s; position:relative; background:#f8fafc; color:#475569; }
+.strategy-box.selected{ border-color:var(--accent-teal); background:#ccfbf1; color:#0f766e; box-shadow:0 4px 6px rgba(0,0,0,.08); }
+.strategy-checkbox{ position:absolute; top:8px; right:8px; width:1.25rem; height:1.25rem; accent-color:var(--accent-teal); }
 
-        #signature-display-box{ min-height:80px; background:#e2e8f0; display:flex; align-items:center; justify-content:center; border:2px dashed #94a3b8; border-radius:.5rem; color:#64748b; font-style:italic; cursor:pointer; overflow:hidden; padding:4px; }
-        #signature-image{ max-width:100%; max-height:100%; object-fit:contain; }
+/* signature display */
+#signature-display-box{ min-height:80px; background:#e2e8f0; display:flex; align-items:center; justify-content:center; border:2px dashed #94a3b8; border-radius:.5rem; color:#64748b; font-style:italic; cursor:pointer; overflow:hidden; padding:4px; }
+#signature-image{ max-width:100%; max-height:100%; object-fit:contain; }
 
-        #wizard-container{ max-width:640px; margin:0 auto; }
-        .wizard-step{ display:none; }
-        .wizard-step.active{ display:block; }
+/* wizard */
+#wizard-container{ max-width:640px; margin:0 auto; }
+.wizard-step{ display:none; }
+.wizard-step.active{ display:block; }
 
-        .preview-action-hidden{ display:none !important; }
+/* wizard controls spacing */
+.wizard-controls { display:flex; justify-content:space-between; gap:12px; align-items:center; margin-top:8px; }
+.small-tertiary { font-size:.85rem; padding:.45rem .75rem; }
 
-        /* Signature fullscreen modal tweaks */
-        .signature-fullscreen .signature-modal-inner { width:100%; height:100%; display:flex; flex-direction:column; gap:10px; align-items:center; justify-content:center; }
-        .signature-fullscreen canvas { border-radius:12px; box-shadow:0 10px 30px rgba(0,0,0,0.25); }
+/* signature fullscreen modal */
+.signature-modal { position:fixed; inset:0; background:rgba(31,41,55,0.85); display:flex; align-items:center; justify-content:center; z-index:60; padding:20px; }
+.signature-modal-inner { background:#fff; border-radius:12px; padding:14px; width:100%; max-width:1100px; max-height:95vh; display:flex; flex-direction:column; gap:10px; box-sizing:border-box; }
+.signature-modal-canvas { border:4px dashed #cbd5e1; border-radius:12px; touch-action:none; background:#fff; }
 
-        /* wizard buttons spacing */
-        .wizard-controls { display:flex; justify-content:space-between; gap:12px; align-items:center; }
-        .wizard-actions-bottom { display:flex; justify-content:center; margin-top:10px; }
-        .small-tertiary { font-size:.85rem; padding:.45rem .75rem; }
+/* preview modal */
+.preview-modal { position:fixed; inset:0; background:rgba(31,41,55,0.75); display:flex; align-items:flex-start; justify-content:center; padding:24px; z-index:50; overflow:auto; }
+.preview-inner { width:100%; max-width:900px; margin-top:24px; background:transparent; }
 
-        @media (max-width: 767px){
-            .pdf-page{ width: 100%; min-height: auto; padding:20px; box-shadow:none; border:0; }
-            .signature-fullscreen canvas { width: calc(100vw - 40px) !important; height: calc(55vh) !important; }
-        }
-    </style>
+/* preview-actions hide during render */
+.preview-action-hidden{ display:none !important; }
+
+/* responsive adjustments for horarios */
+@media (max-width:767px){
+  .pdf-page{ width:100%; min-height:auto; padding:20px; box-shadow:none; border:0; }
+  /* stack time inputs in mobile */
+  .time-pair { display:flex; flex-direction:column; gap:8px; }
+  .signature-modal-inner { width:100%; height:100%; border-radius:0; max-width:none; max-height:none; padding:12px; }
+  .signature-modal-canvas { width: calc(100vw - 40px) !important; height: calc(55vh) !important; }
+  .wizard-controls { flex-direction:row; }
+}
+@media (min-width:768px){
+  .time-pair { display:flex; flex-direction:row; gap:12px; }
+}
+</style>
 </head>
 <body class="p-4 sm:p-8">
 
-<div id="app-container" class="max-w-4xl mx-auto bg-white shadow-2xl rounded-xl p-6 md:p-10">
+<div id="app" class="container-max mx-auto bg-white rounded-xl shadow-lg p-6">
 
-    <div class="mb-4 flex justify-end items-center text-sm text-gray-500">
-        <div id="user-info">ID Local: <span id="user-id" class="font-mono text-xs bg-gray-100 p-1 rounded">Cargando...</span></div>
-    </div>
+  <div class="flex justify-between items-center mb-6">
+    <h1 class="text-2xl font-bold">ART — Análisis de Riesgos de la Tarea</h1>
+    <div class="text-sm text-gray-600">ID: <span id="user-id" class="font-mono">local</span></div>
+  </div>
 
-    <header class="mb-8 border-b-4 border-red-600 pb-4">
-        <h1 class="text-3xl sm:text-4xl font-extrabold text-gray-800">ART: Análisis de Riesgos de la Tarea (Chequeo Pre-Tarea)</h1>
-    </header>
+  <!-- FORM (desktop) -->
+  <div id="full-form">
+    <section class="mb-6">
+      <h2 class="text-lg font-semibold text-red-600 mb-3">1.1 Antecedentes</h2>
 
-    <div id="form-root">
-        <!-- Full form (desktop) -->
-        <div id="full-form" class="">
-            <section id="etapa1-section" class="mb-10">
-                <h2 class="text-2xl font-bold text-red-700 mb-6 border-b-2 border-red-700 pb-2">I) ETAPA 1</h2>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 bg-gray-50 p-4 rounded-lg border">
+        <input id="empresa" placeholder="Empresa" class="p-3 border rounded" />
+        <input id="supervisor" placeholder="Supervisor" class="p-3 border rounded" />
+        <input id="area" placeholder="Área" class="p-3 border rounded" />
+        <input id="lugar_especifico" placeholder="Lugar específico" class="p-3 border rounded" />
 
-                <div class="p-5 bg-gray-50 rounded-lg border border-gray-200 mb-8" id="subseccion-1-1">
-                    <h3 class="text-xl font-semibold text-gray-700 mb-4 border-b pb-2">1.1) ANTECEDENTES DEL TRABAJO</h3>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <input type="text" id="empresa" placeholder="NOMBRE DE LA EMPRESA" class="p-3 border rounded-lg focus:ring-red-500 focus:border-red-500 col-span-1 uppercase">
-                        <input type="text" id="supervisor" placeholder="NOMBRE DEL SUPERVISOR RESPONSABLE DEL TRABAJO" class="p-3 border rounded-lg focus:ring-red-500 focus:border-red-500 col-span-1 uppercase">
-                        <input type="text" id="area" placeholder="ÁREA DE TRABAJO" class="p-3 border rounded-lg focus:ring-red-500 focus:border-red-500 col-span-1 uppercase">
-                        <input type="text" id="lugar_especifico" placeholder="LUGAR ESPECÍFICO" class="p-3 border rounded-lg focus:ring-red-500 focus:border-red-500 col-span-1 uppercase">
-
-                        <!-- Fecha/Hora con títulos visibles -->
-                        <div>
-                            <label for="fecha" class="block text-sm font-semibold text-gray-600 mb-1">FECHA</label>
-                            <input type="date" id="fecha" class="p-3 border rounded-lg focus:ring-red-500 focus:border-red-500 w-full">
-                        </div>
-
-                        <div>
-                            <label class="block text-sm font-semibold text-gray-600 mb-1">HORARIO</label>
-                            <div class="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label for="hora_inicio" class="text-xs text-gray-500">Hora Inicio</label>
-                                    <input type="time" id="hora_inicio" class="p-3 border rounded-lg focus:ring-red-500 focus:border-red-500 w-full">
-                                </div>
-                                <div>
-                                    <label for="hora_termino" class="text-xs text-gray-500">Hora Término</label>
-                                    <input type="time" id="hora_termino" class="p-3 border rounded-lg focus:ring-red-500 focus:border-red-500 w-full">
-                                </div>
-                            </div>
-                        </div>
-
-                        <textarea id="descripcion" placeholder="DESCRIPCIÓN DE LA TAREA (Detallada)" rows="3" class="mt-4 w-full p-3 border rounded-lg focus:ring-red-500 focus:border-red-500 uppercase"></textarea>
-
-                        <div class="mt-4 border-t pt-4 col-span-full">
-                            <label class="block text-sm font-medium text-gray-700 mb-2">FIRMA DEL SUPERVISOR RESPONSABLE</label>
-                            <div id="signature-display-box" onclick="openSignatureModal()">
-                                <img id="signature-image" src="" alt="Firma digital" class="hidden">
-                                <span id="signature-placeholder">Clic aquí para firmar</span>
-                            </div>
-                            <input type="hidden" id="firma_base64" value="">
-                        </div>
-                    </div>
-                </div>
-
-                <!-- 1.2 -->
-                <div class="p-5 bg-red-50 rounded-lg border border-red-200 mb-8" id="subseccion-1-2">
-                    <h3 class="text-xl font-semibold text-red-600 mb-4 border-b border-red-300 pb-2">1.2) DE LOS TRABAJADORES: CONTESTE CADA PREGUNTA</h3>
-
-                    <div id="no-iniciar-alert-1-2" class="hidden p-4 mb-4 text-sm text-yellow-800 rounded-lg bg-yellow-100" role="alert">
-                        <strong>ATENCIÓN:</strong> UN "NO" EN CUALQUIERA DE LAS PREGUNTAS SIGNIFICA <span class="text-red-600 font-semibold">NO INICIAR LA TAREA</span>.
-                    </div>
-
-                    <div id="check-list-1-2">
-                        <div class="flex items-center justify-between py-3 border-b border-red-100" data-pregunta="condiciones_fisicas">
-                            <label class="text-gray-700 text-base flex-1 mr-4">1. ¿Me encuentro en condiciones físicas y psicológicas para realizar la tarea?</label>
-                            <div class="flex space-x-4">
-                                <button data-answer="Si" class="answer-btn-1-2 text-white bg-green-500 hover:bg-green-600 font-medium rounded-lg text-sm px-4 py-2">Sí</button>
-                                <button data-answer="No" class="answer-btn-1-2 text-white bg-red-500 hover:bg-red-600 font-medium rounded-lg text-sm px-4 py-2">No</button>
-                            </div>
-                        </div>
-                        <div class="flex items-center justify-between py-3 border-b border-red-100" data-pregunta="condiciones_entorno">
-                            <label class="text-gray-700 text-base flex-1 mr-4">2. ¿Las condiciones del entorno permiten realizar mi trabajo de manera segura?</label>
-                            <div class="flex space-x-4">
-                                <button data-answer="Si" class="answer-btn-1-2 text-white bg-green-500 hover:bg-green-600 font-medium rounded-lg text-sm px-4 py-2">Sí</button>
-                                <button data-answer="No" class="answer-btn-1-2 text-white bg-red-500 hover:bg-red-600 font-medium rounded-lg text-sm px-4 py-2">No</button>
-                            </div>
-                        </div>
-                        <div class="flex items-center justify-between py-3 border-b border-red-100" data-pregunta="areas_condiciones">
-                            <label class="text-gray-700 text-base flex-1 mr-4">3. ¿Verifiqué que las áreas de desplazamiento y trabajo se encuentran en condiciones?</label>
-                            <div class="flex space-x-4">
-                                <button data-answer="Si" class="answer-btn-1-2 text-white bg-green-500 hover:bg-green-600 font-medium rounded-lg text-sm px-4 py-2">Sí</button>
-                                <button data-answer="No" class="answer-btn-1-2 text-white bg-red-500 hover:bg-red-600 font-medium rounded-lg text-sm px-4 py-2">No</button>
-                            </div>
-                        </div>
-                        <div class="flex items-center justify-between py-3 border-b border-red-100" data-pregunta="epp_especificos">
-                            <label class="text-gray-700 text-base flex-1 mr-4">4. ¿Poseo todos los elementos de protección personal (EPP) específicos para la tarea?</label>
-                            <div class="flex space-x-4">
-                                <button data-answer="Si" class="answer-btn-1-2 text-white bg-green-500 hover:bg-green-600 font-medium rounded-lg text-sm px-4 py-2">Sí</button>
-                                <button data-answer="No" class="answer-btn-1-2 text-white bg-red-500 hover:bg-red-600 font-medium rounded-lg text-sm px-4 py-2">No</button>
-                            </div>
-                        </div>
-                        <div class="flex items-center justify-between py-3 border-b border-red-100" data-pregunta="equipos_herramientas">
-                            <label class="text-gray-700 text-base flex-1 mr-4">5. ¿Dispongo de equipos y herramientas apropiadas, en buen estado y con inspección al día?</label>
-                            <div class="flex space-x-4">
-                                <button data-answer="Si" class="answer-btn-1-2 text-white bg-green-500 hover:bg-green-600 font-medium rounded-lg text-sm px-4 py-2">Sí</button>
-                                <button data-answer="No" class="answer-btn-1-2 text-white bg-red-500 hover:bg-red-600 font-medium rounded-lg text-sm px-4 py-2">No</button>
-                            </div>
-                        </div>
-                        <div class="flex items-center justify-between py-3" data-pregunta="actuar_emergencia">
-                            <label class="text-gray-700 text-base flex-1 mr-4">6. ¿Sé cómo activar y actuar ante una emergencia?</label>
-                            <div class="flex space-x-4">
-                                <button data-answer="Si" class="answer-btn-1-2 text-white bg-green-500 hover:bg-green-600 font-medium rounded-lg text-sm px-4 py-2">Sí</button>
-                                <button data-answer="No" class="answer-btn-1-2 text-white bg-red-500 hover:bg-red-600 font-medium rounded-lg text-sm px-4 py-2">No</button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- 1.3 -->
-                <div class="p-5 bg-blue-50 rounded-lg border border-blue-200 mb-8" id="subseccion-1-3">
-                    <h3 class="text-xl font-semibold text-blue-600 mb-4 border-b border-blue-300 pb-2">1.3) DE LA TAREA: CONTESTE CADA PREGUNTA</h3>
-
-                    <div class="py-3 border-b border-blue-100" data-pregunta="capacitado_prevencion">
-                        <label class="text-gray-700 text-base block mb-2">1. ¿Estoy capacitado(a) y conozco las medidas de prevención ...?</label>
-                        <div class="flex justify-start space-x-4">
-                            <button data-answer="Si" class="answer-btn-1-3 text-white bg-green-500 hover:bg-green-600 font-medium rounded-lg text-sm px-4 py-2">Sí</button>
-                            <button data-answer="No" class="answer-btn-1-3 text-white bg-red-500 hover:bg-red-600 font-medium rounded-lg text-sm px-4 py-2">No</button>
-                        </div>
-                        <p class="text-xs text-red-600 font-semibold mt-2">UN "NO" A ESTA PREGUNTA SIGNIFICA <span class="text-red-700 font-bold">NO INICIAR LA TAREA</span></p>
-                    </div>
-
-                    <div class="py-3 border-b border-blue-100" data-pregunta="documento_regula">
-                        <label class="text-gray-700 text-base block mb-2">2. ¿Existe algún documento que regule mi trabajo o tarea?</label>
-                        <div class="flex justify-start space-x-4">
-                            <button data-answer="Si" class="answer-btn-1-3 text-white bg-green-500 hover:bg-green-600 font-medium rounded-lg text-sm px-4 py-2">Sí</button>
-                            <button data-answer="No" class="answer-btn-1-3 text-white bg-red-500 hover:bg-red-600 font-medium rounded-lg text-sm px-4 py-2">No</button>
-                        </div>
-                        <textarea id="documento_tipo" placeholder="Indique cuál: Manual, procedimiento, instructivo, etc." rows="1" class="hidden mt-2 w-full p-2 border rounded-lg focus:ring-blue-500 focus:border-blue-500 text-sm"></textarea>
-                    </div>
-
-                    <div class="py-3" data-pregunta="alcance_actividades">
-                        <label class="text-gray-700 text-base block mb-2">3. ¿El manual, reglamento, procedimiento, instructivo u otro incluye todas las actividades (alcance) a desarrollar en terreno?</label>
-                        <div class="flex justify-start space-x-4">
-                            <button data-answer="Si" class="answer-btn-1-3 text-white bg-green-500 hover:bg-green-600 font-medium rounded-lg text-sm px-4 py-2">Sí</button>
-                            <button data-answer="No" class="answer-btn-1-3 text-white bg-red-500 hover:bg-red-600 font-medium rounded-lg text-sm px-4 py-2">No</button>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- 1.4 -->
-                <div class="p-5 bg-teal-50 rounded-lg border border-teal-200" id="subseccion-1-4">
-                    <h3 class="text-xl font-semibold text-teal-700 mb-4 border-b border-teal-300 pb-2">1.4) Verificar si aplica una o más Estrategias de Control</h3>
-                    <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-7 gap-4" id="estrategias-grid">
-                        <div class="strategy-box" data-strategy="Aislamiento">
-                            <label class="flex flex-col items-center justify-center p-2 h-full w-full">
-                                <span class="text-sm">Aislamiento</span>
-                                <span class="text-xs font-normal text-gray-500">(Control de Ingeniería)</span>
-                                <input type="checkbox" data-strategy-name="Aislamiento" class="strategy-checkbox" onchange="toggleStrategyBox(this)">
-                            </label>
-                        </div>
-                        <div class="strategy-box" data-strategy="Señalización">
-                            <label class="flex flex-col items-center justify-center p-2 h-full w-full">
-                                <span class="text-sm">Señalización</span>
-                                <span class="text-xs font-normal text-gray-500">(Control Administrativo)</span>
-                                <input type="checkbox" data-strategy-name="Señalización" class="strategy-checkbox" onchange="toggleStrategyBox(this)">
-                            </label>
-                        </div>
-                        <div class="strategy-box" data-strategy="Permiso de Trabajo">
-                            <label class="flex flex-col items-center justify-center p-2 h-full w-full">
-                                <span class="text-sm">Permiso de Trabajo</span>
-                                <span class="text-xs font-normal text-gray-500">(Control Administrativo)</span>
-                                <input type="checkbox" data-strategy-name="Permiso de Trabajo" class="strategy-checkbox" onchange="toggleStrategyBox(this)">
-                            </label>
-                        </div>
-                        <div class="strategy-box" data-strategy="EPP">
-                            <label class="flex flex-col items-center justify-center p-2 h-full w-full">
-                                <span class="text-sm">Uso de EPP</span>
-                                <span class="text-xs font-normal text-gray-500">(Control de EPP)</span>
-                                <input type="checkbox" data-strategy-name="EPP" class="strategy-checkbox" onchange="toggleStrategyBox(this)">
-                            </label>
-                        </div>
-                    </div>
-                </div>
-
-            </section>
-
-            <footer class="mt-10 pt-6 border-t border-gray-300 text-center">
-                <button onclick="showPdfPreview()" id="preview-art-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-extrabold py-3 px-8 rounded-xl shadow-lg">Previsualizar ART (PDF)</button>
-                <p class="text-sm text-gray-500 mt-4">Previsualice y luego descargue el documento final en PDF.</p>
-                <button onclick="loadArtHistory()" id="load-history-btn" class="mt-4 bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-5 rounded-lg shadow-md">Ver Historial Local</button>
-            </footer>
+        <div>
+          <label class="block text-sm font-semibold mb-1">FECHA</label>
+          <input id="fecha" type="date" class="p-3 border rounded w-full" />
         </div>
 
-        <!-- Wizard (mobile) -->
-        <div id="wizard" class="hidden">
-            <div id="wizard-container" class="bg-white rounded-lg p-4 shadow">
-                <div id="wizard-steps-indicator" class="mb-4 text-sm text-gray-600"></div>
-
-                <div class="wizard-step" data-step="0" id="step-0">
-                    <h3 class="font-bold mb-2">Paso 1 — Antecedentes</h3>
-                    <input type="text" id="empresa_m" placeholder="Empresa" class="mb-2 p-3 border rounded w-full uppercase">
-                    <input type="text" id="supervisor_m" placeholder="Supervisor" class="mb-2 p-3 border rounded w-full uppercase">
-                    <input type="text" id="area_m" placeholder="Área" class="mb-2 p-3 border rounded w-full uppercase">
-                    <input type="text" id="lugar_especifico_m" placeholder="Lugar específico" class="mb-2 p-3 border rounded w-full uppercase">
-                    <label class="block text-sm font-semibold mb-1">FECHA</label>
-                    <input id="fecha_m" type="date" class="mb-2 p-3 border rounded w-full">
-                    <label class="block text-sm font-semibold mb-1">HORARIO</label>
-                    <div class="grid grid-cols-2 gap-2 mb-3">
-                        <div>
-                            <label class="text-xs text-gray-500">Inicio</label>
-                            <input id="hora_inicio_m" type="time" class="p-3 border rounded">
-                        </div>
-                        <div>
-                            <label class="text-xs text-gray-500">Término</label>
-                            <input id="hora_termino_m" type="time" class="p-3 border rounded">
-                        </div>
-                    </div>
-                    <textarea id="descripcion_m" rows="3" placeholder="Descripción" class="mt-2 p-3 border rounded w-full uppercase"></textarea>
-                </div>
-
-                <div class="wizard-step" data-step="1" id="step-1">
-                    <h3 class="font-bold mb-2">Paso 2 — Chequeo Trabajadores</h3>
-                    <div id="check-list-1-2-m"></div>
-                </div>
-
-                <div class="wizard-step" data-step="2" id="step-2">
-                    <h3 class="font-bold mb-2">Paso 3 — Chequeo Tarea</h3>
-                    <div id="subseccion-1-3-m"></div>
-                </div>
-
-                <div class="wizard-step" data-step="3" id="step-3">
-                    <h3 class="font-bold mb-2">Paso 4 — Estrategias de Control</h3>
-                    <div id="estrategias-grid-m" class="grid grid-cols-2 gap-2"></div>
-                </div>
-
-                <div class="wizard-step" data-step="4" id="step-4">
-                    <h3 class="font-bold mb-2">Paso 5 — Firma</h3>
-                    <div id="signature-display-box-m" class="mb-3" onclick="openSignatureModal()">Clic aquí para firmar</div>
-                    <p class="text-sm text-gray-600">La firma es obligatoria antes de previsualizar.</p>
-                </div>
-
-                <div class="mt-4 wizard-controls">
-                    <button id="wizard-prev" class="bg-gray-300 px-4 py-2 rounded">Anterior</button>
-                    <button id="wizard-next" class="bg-blue-600 text-white px-4 py-2 rounded">Siguiente</button>
-                </div>
-
-                <!-- Save draft intentionally removed (button removed since it did nothing) -->
+        <div>
+          <label class="block text-sm font-semibold mb-1">HORARIO</label>
+          <div class="time-pair">
+            <div>
+              <label class="text-xs text-gray-500">Hora Inicio</label>
+              <input id="hora_inicio" type="time" class="p-3 border rounded w-full" />
             </div>
+            <div>
+              <label class="text-xs text-gray-500">Hora Término</label>
+              <input id="hora_termino" type="time" class="p-3 border rounded w-full" />
+            </div>
+          </div>
         </div>
 
+        <textarea id="descripcion" rows="3" placeholder="Descripción" class="col-span-full p-3 border rounded"></textarea>
+
+        <div class="col-span-full mt-2">
+          <label class="block text-sm font-semibold mb-1">Firma del supervisor</label>
+          <div class="flex gap-2 items-center">
+            <div id="signature-display-box" onclick="openSignatureModal()" style="flex:1"></div>
+            <button onclick="openSignatureModal()" class="bg-blue-600 text-white px-4 py-2 rounded">Toca aquí para firmar</button>
+          </div>
+          <input type="hidden" id="firma_base64" value="" />
+        </div>
+      </div>
+    </section>
+
+    <!-- 1.2 -->
+    <section class="mb-6">
+      <h2 class="text-lg font-semibold text-red-600 mb-3">1.2 Chequeo de Trabajadores</h2>
+      <div id="no-iniciar-alert" class="hidden p-3 bg-yellow-100 text-yellow-800 rounded mb-3">ATENCIÓN: Un "NO" en estas preguntas significa <strong>NO INICIAR LA TAREA</strong>.</div>
+      <div id="check-list-1-2" class="bg-red-50 p-4 rounded border">
+        <div class="mb-3" data-pregunta="condiciones_fisicas">
+          <div class="flex justify-between items-center">
+            <div>1. ¿Me encuentro en condiciones físicas y psicológicas para realizar la tarea?</div>
+            <div class="flex gap-2">
+              <button data-answer="Si" class="ans-btn bg-green-500 text-white px-3 py-1 rounded">Sí</button>
+              <button data-answer="No" class="ans-btn bg-red-500 text-white px-3 py-1 rounded">No</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="mb-3" data-pregunta="condiciones_entorno">
+          <div class="flex justify-between items-center">
+            <div>2. ¿Las condiciones del entorno permiten realizar mi trabajo de manera segura?</div>
+            <div class="flex gap-2">
+              <button data-answer="Si" class="ans-btn bg-green-500 text-white px-3 py-1 rounded">Sí</button>
+              <button data-answer="No" class="ans-btn bg-red-500 text-white px-3 py-1 rounded">No</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="mb-3" data-pregunta="areas_condiciones">
+          <div class="flex justify-between items-center">
+            <div>3. ¿Verifiqué que las áreas de desplazamiento y trabajo se encuentran en condiciones?</div>
+            <div class="flex gap-2">
+              <button data-answer="Si" class="ans-btn bg-green-500 text-white px-3 py-1 rounded">Sí</button>
+              <button data-answer="No" class="ans-btn bg-red-500 text-white px-3 py-1 rounded">No</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="mb-3" data-pregunta="epp_especificos">
+          <div class="flex justify-between items-center">
+            <div>4. ¿Poseo todos los elementos de protección personal (EPP) específicos para la tarea?</div>
+            <div class="flex gap-2">
+              <button data-answer="Si" class="ans-btn bg-green-500 text-white px-3 py-1 rounded">Sí</button>
+              <button data-answer="No" class="ans-btn bg-red-500 text-white px-3 py-1 rounded">No</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="mb-3" data-pregunta="equipos_herramientas">
+          <div class="flex justify-between items-center">
+            <div>5. ¿Dispongo de equipos y herramientas apropiadas, en buen estado y con inspección al día?</div>
+            <div class="flex gap-2">
+              <button data-answer="Si" class="ans-btn bg-green-500 text-white px-3 py-1 rounded">Sí</button>
+              <button data-answer="No" class="ans-btn bg-red-500 text-white px-3 py-1 rounded">No</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="mb-3" data-pregunta="actuar_emergencia">
+          <div class="flex justify-between items-center">
+            <div>6. ¿Sé cómo activar y actuar ante una emergencia?</div>
+            <div class="flex gap-2">
+              <button data-answer="Si" class="ans-btn bg-green-500 text-white px-3 py-1 rounded">Sí</button>
+              <button data-answer="No" class="ans-btn bg-red-500 text-white px-3 py-1 rounded">No</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 1.3 -->
+    <section class="mb-6">
+      <h2 class="text-lg font-semibold text-blue-600 mb-3">1.3 De la tarea</h2>
+      <div id="subseccion-1-3" class="bg-blue-50 p-4 rounded border">
+        <div class="mb-3" data-pregunta="capacitado_prevencion">
+          <div class="mb-2">1. ¿Estoy capacitado(a) y conozco las medidas de prevención?</div>
+          <div class="flex gap-2">
+            <button data-answer="Si" class="ans-btn-1-3 bg-green-500 text-white px-3 py-1 rounded">Sí</button>
+            <button data-answer="No" class="ans-btn-1-3 bg-red-500 text-white px-3 py-1 rounded">No</button>
+          </div>
+          <p class="text-xs text-red-600 mt-2">UN "NO" EN ESTA PREGUNTA SIGNIFICA <strong>NO INICIAR LA TAREA</strong></p>
+        </div>
+
+        <div class="mb-3" data-pregunta="documento_regula">
+          <div class="mb-2">2. ¿Existe algún documento que regule mi trabajo o tarea?</div>
+          <div class="flex gap-2">
+            <button data-answer="Si" class="ans-btn-doc bg-green-500 text-white px-3 py-1 rounded">Sí</button>
+            <button data-answer="No" class="ans-btn-doc bg-red-500 text-white px-3 py-1 rounded">No</button>
+          </div>
+          <textarea id="documento_tipo" class="hidden mt-2 w-full p-2 border rounded" placeholder="Indique cuál: manual, procedimiento, instructivo..."></textarea>
+        </div>
+
+        <div class="mb-3" data-pregunta="alcance_actividades">
+          <div class="mb-2">3. ¿El documento incluye todas las actividades (alcance)?</div>
+          <div class="flex gap-2">
+            <button data-answer="Si" class="ans-btn-1-3 bg-green-500 text-white px-3 py-1 rounded">Sí</button>
+            <button data-answer="No" class="ans-btn-1-3 bg-red-500 text-white px-3 py-1 rounded">No</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 1.4 Estrategias -->
+    <section class="mb-6">
+      <h2 class="text-lg font-semibold text-teal-700 mb-3">1.4 Estrategias</h2>
+      <div id="estrategias-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+        <label class="strategy-box">
+          <div>
+            <div class="font-semibold">Aislamiento</div>
+            <div class="text-xs text-gray-500">(Ingeniería)</div>
+            <input type="checkbox" data-strategy-name="Aislamiento" class="strategy-checkbox hidden" onchange="toggleStrategyBox(this)">
+          </div>
+        </label>
+        <label class="strategy-box">
+          <div>
+            <div class="font-semibold">Señalización</div>
+            <div class="text-xs text-gray-500">(Administrativo)</div>
+            <input type="checkbox" data-strategy-name="Señalización" class="strategy-checkbox hidden" onchange="toggleStrategyBox(this)">
+          </div>
+        </label>
+        <label class="strategy-box">
+          <div>
+            <div class="font-semibold">Permiso de Trabajo</div>
+            <div class="text-xs text-gray-500">(Administrativo)</div>
+            <input type="checkbox" data-strategy-name="Permiso de Trabajo" class="strategy-checkbox hidden" onchange="toggleStrategyBox(this)">
+          </div>
+        </label>
+        <label class="strategy-box">
+          <div>
+            <div class="font-semibold">Uso de EPP</div>
+            <div class="text-xs text-gray-500">(EPP)</div>
+            <input type="checkbox" data-strategy-name="EPP" class="strategy-checkbox hidden" onchange="toggleStrategyBox(this)">
+          </div>
+        </label>
+      </div>
+    </section>
+
+    <footer class="mt-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+      <div>
+        <button id="preview-art-btn" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg">Previsualizar ART (PDF)</button>
+        <button id="load-history-btn" class="ml-2 bg-gray-600 hover:bg-gray-700 text-white px-3 py-2 rounded-lg">Historial</button>
+      </div>
+      <div class="text-sm text-gray-500">Al generar PDF, el archivo se guardará directamente (sin imprimir).</div>
+    </footer>
+  </div>
+
+  <!-- WIZARD (mobile) -->
+  <div id="wizard" class="hidden">
+    <div id="wizard-container" class="bg-white p-4 rounded shadow">
+      <div id="wizard-steps-indicator" class="mb-3 text-sm text-gray-600"></div>
+
+      <div class="wizard-step active" data-step="0">
+        <h3 class="font-bold mb-2">Paso 1 — Antecedentes</h3>
+        <input id="empresa_m" class="mb-2 p-3 border rounded w-full" placeholder="Empresa" />
+        <input id="supervisor_m" class="mb-2 p-3 border rounded w-full" placeholder="Supervisor" />
+        <input id="area_m" class="mb-2 p-3 border rounded w-full" placeholder="Área" />
+        <input id="lugar_especifico_m" class="mb-2 p-3 border rounded w-full" placeholder="Lugar específico" />
+
+        <label class="block text-sm font-semibold mb-1">FECHA</label>
+        <input id="fecha_m" type="date" class="mb-2 p-3 border rounded w-full" />
+
+        <label class="block text-sm font-semibold mb-1">HORARIO</label>
+        <div class="time-pair mb-2">
+          <div>
+            <label class="text-xs text-gray-500">Inicio</label>
+            <input id="hora_inicio_m" type="time" class="p-3 border rounded w-full" />
+          </div>
+          <div>
+            <label class="text-xs text-gray-500">Término</label>
+            <input id="hora_termino_m" type="time" class="p-3 border rounded w-full" />
+          </div>
+        </div>
+        <textarea id="descripcion_m" rows="3" class="p-3 border rounded w-full" placeholder="Descripción"></textarea>
+      </div>
+
+      <div class="wizard-step" data-step="1">
+        <h3 class="font-bold mb-2">Paso 2 — Chequeo Trabajadores</h3>
+        <div id="check-list-1-2-m"></div>
+      </div>
+
+      <div class="wizard-step" data-step="2">
+        <h3 class="font-bold mb-2">Paso 3 — Chequeo Tarea</h3>
+        <div id="subseccion-1-3-m"></div>
+      </div>
+
+      <div class="wizard-step" data-step="3">
+        <h3 class="font-bold mb-2">Paso 4 — Estrategias</h3>
+        <div id="estrategias-grid-m" class="grid grid-cols-2 gap-2"></div>
+      </div>
+
+      <div class="wizard-step" data-step="4">
+        <h3 class="font-bold mb-2">Paso 5 — Firma</h3>
+        <div id="signature-display-box-m" class="mb-3 p-3 border rounded text-center" onclick="openSignatureModal()">Toca aquí para abrir la firma</div>
+        <p class="text-sm text-gray-600">La firma es obligatoria para finalizar.</p>
+      </div>
+
+      <div class="wizard-controls">
+        <button id="wizard-prev" class="bg-gray-300 px-4 py-2 rounded">Anterior</button>
+        <button id="wizard-next" class="bg-blue-600 text-white px-4 py-2 rounded">Siguiente</button>
+      </div>
     </div>
+  </div>
+
 </div>
 
 <!-- Signature Modal (fullscreen on mobile) -->
-<div id="signature-modal" class="fixed inset-0 bg-gray-600 bg-opacity-85 hidden items-center justify-center p-4 z-50">
-    <div class="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[95vh] p-4 signature-modal-inner">
-        <div class="flex justify-between items-center mb-2">
-            <h3 class="text-2xl font-bold text-gray-800">Firma Digital del Supervisor</h3>
-            <button onclick="closeSignatureModal()" class="text-gray-600 px-3 py-1 rounded hover:bg-gray-100">Cerrar</button>
-        </div>
-        <p id="signature-instruction" class="text-sm text-gray-600 mb-2">Si está en móvil, gira el dispositivo a horizontal para una firma más cómoda.</p>
-        <div style="display:flex;justify-content:center">
-            <canvas id="signature-canvas" width="900" height="300" class="w-full max-w-full border-4 border-dashed rounded-lg" style="touch-action:none"></canvas>
-        </div>
-        <div class="flex gap-3 mt-4">
-            <button onclick="clearSignatureCanvas()" class="flex-1 bg-yellow-500 hover:bg-yellow-600 text-white font-medium py-2 rounded-lg">Borrar Firma</button>
-            <button onclick="saveSignature()" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 rounded-lg">Guardar y Cerrar</button>
-        </div>
+<div id="signature-modal" class="signature-modal hidden" aria-hidden="true">
+  <div class="signature-modal-inner">
+    <div class="flex justify-between items-center">
+      <h3 class="text-xl font-bold">Firma digital del supervisor</h3>
+      <button onclick="closeSignatureModal()" class="text-gray-600 px-3 py-1 rounded hover:bg-gray-100">Cerrar</button>
     </div>
+    <p id="signature-instruction" class="text-sm text-gray-600">Gira el dispositivo a horizontal para una firma más cómoda (si estás en móvil).</p>
+    <canvas id="signature-canvas" class="signature-modal-canvas" width="900" height="300"></canvas>
+    <div class="flex gap-3 mt-2">
+      <button onclick="clearSignatureCanvas()" class="flex-1 bg-yellow-500 text-white py-2 rounded">Borrar</button>
+      <button onclick="saveSignature()" class="flex-1 bg-blue-600 text-white py-2 rounded">Guardar y cerrar</button>
+    </div>
+  </div>
 </div>
 
-<!-- PDF Preview Modal (single, cleaned) -->
-<div id="pdf-preview-modal" class="fixed inset-0 bg-gray-600 bg-opacity-75 hidden items-center justify-center p-4 z-40">
-    <div class="flex justify-center items-start w-full h-full overflow-auto p-6">
-        <div id="pdf-content-container" class="w-full max-w-3xl">
-            <!-- content injected here: either HTML for desktop preview or an <img> for mobile preview -->
-            <div class="pdf-page" id="pdf-content"></div>
-        </div>
+<!-- Preview Modal -->
+<div id="pdf-preview-modal" class="preview-modal hidden">
+  <div class="preview-inner">
+    <div id="previewContentWrapper" class="bg-white rounded-lg p-3">
+      <div id="pdf-content" class="pdf-page"></div>
     </div>
-
-    <div class="fixed bottom-6 right-6 flex gap-2" id="preview-actions">
-        <input id="pdf-filename-input" type="text" placeholder="Nombre archivo (opcional)" class="px-3 py-2 rounded border">
-        <button id="download-pdf-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-extrabold py-3 px-6 rounded-lg shadow-lg">📥 Descargar PDF</button>
-        <button onclick="document.getElementById('pdf-preview-modal').classList.add('hidden')" class="bg-gray-300 hover:bg-gray-400 text-gray-800 py-3 px-6 rounded-lg">Cerrar</button>
+    <div id="preview-actions" class="mt-3 flex justify-end gap-2">
+      <input id="pdf-filename-input" type="text" placeholder="Nombre del archivo (opcional)" class="px-3 py-2 rounded border" />
+      <button id="download-pdf-btn" class="bg-blue-600 text-white px-4 py-2 rounded">📥 Descargar PDF</button>
+      <button onclick="document.getElementById('pdf-preview-modal').classList.add('hidden')" class="bg-gray-300 px-4 py-2 rounded">Cerrar</button>
     </div>
+  </div>
 </div>
 
 <!-- History Modal -->
-<div id="history-modal" class="fixed inset-0 bg-gray-600 bg-opacity-75 hidden items-center justify-center p-4 z-50">
-    <div class="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[80vh] overflow-y-auto p-6">
-        <div class="flex justify-between items-center border-b pb-3 mb-4">
-            <h3 class="text-2xl font-bold text-gray-800">Historial Local de Chequeos Pre-Tarea</h3>
-            <button onclick="document.getElementById('history-modal').classList.add('hidden')" class="text-gray-500 hover:text-gray-800">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-            </button>
-        </div>
-        <div id="history-list" class="space-y-4"></div>
-        <p id="no-history-message" class="text-gray-500 italic hidden">No hay chequeos guardados localmente todavía.</p>
+<div id="history-modal" class="preview-modal hidden">
+  <div class="preview-inner bg-white p-4 rounded-lg">
+    <div class="flex justify-between items-center mb-2">
+      <h3 class="text-lg font-semibold">Historial local</h3>
+      <button onclick="document.getElementById('history-modal').classList.add('hidden')" class="px-2">Cerrar</button>
     </div>
+    <div id="history-list" class="space-y-2"></div>
+  </div>
 </div>
 
 <script>
 /* ---------------- Globals ---------------- */
-let userId = 'LocalUser-' + Math.random().toString(16).slice(2,10);
+let userId = 'Local-' + Math.random().toString(16).slice(2,8);
+document.getElementById('user-id').textContent = userId;
+
 const ART_HISTORY_KEY = 'art_chequeos_history';
 const ART_DRAFT_KEY = 'art_draft';
 
-/* Signature canvas variables */
-let canvas, ctx, isDrawing=false, lastX=0, lastY=0, signatureDataURL='';
-
-/* Device/wizard */
+let canvas, ctx, isDrawing=false, lastX=0, lastY=0;
 let isMobileMode = false;
-let wizardInitialized = false;
 let wizardStep = 0;
+let wizardInitialized = false;
 
-/* ---------------- Init ---------------- */
-function initializeAppLogic() {
-    document.getElementById('user-id').textContent = userId;
-    setupEventListeners();
-    initializeSignatureCanvas();
-    initStrategyBoxes();
-    setupDeviceMode(); // wizard or full form
-    restoreDraftIfAny();
-    window.addEventListener('resize', debounce(handleResize, 250));
-}
+/* ---------------- Utilities ---------------- */
+function debounce(fn, wait){ let t; return function(...args){ clearTimeout(t); t=setTimeout(()=>fn.apply(this,args), wait); }; }
+function showMessage(text, type='info'){ const el=document.createElement('div'); el.textContent=text; el.className='fixed top-5 left-1/2 transform -translate-x-1/2 z-60 px-4 py-2 rounded shadow ' + (type==='error'?'bg-red-500 text-white':type==='success'?'bg-green-500 text-white':'bg-blue-500 text-white'); document.body.appendChild(el); setTimeout(()=>el.remove(),3000); }
 
-/* ---------------- Signature Canvas ---------------- */
+/* ---------------- Signature functions ---------------- */
 function initializeSignatureCanvas(){
-    canvas = document.getElementById('signature-canvas');
-    if(!canvas) return;
-    ctx = canvas.getContext('2d');
-    ctx.strokeStyle = '#000';
-    ctx.lineJoin = 'round';
-    ctx.lineCap = 'round';
-    ctx.lineWidth = 3;
+  canvas = document.getElementById('signature-canvas');
+  if(!canvas) return;
+  ctx = canvas.getContext('2d');
+  ctx.strokeStyle = '#000';
+  ctx.lineJoin = 'round';
+  ctx.lineCap = 'round';
+  ctx.lineWidth = 3;
+  canvas.style.touchAction = 'none';
 
-    // pointer events unified to support touch and mouse
-    canvas.addEventListener('pointerdown', (e)=>{ e.preventDefault(); const rect=canvas.getBoundingClientRect(); isDrawing=true; lastX = (e.clientX - rect.left); lastY = (e.clientY - rect.top); });
-    canvas.addEventListener('pointermove', (e)=>{ if(!isDrawing) return; const rect=canvas.getBoundingClientRect(); const x = e.clientX - rect.left; const y = e.clientY - rect.top; ctx.beginPath(); ctx.moveTo(lastX,lastY); ctx.lineTo(x,y); ctx.stroke(); [lastX,lastY]=[x,y]; });
-    canvas.addEventListener('pointerup', ()=>{ isDrawing=false; });
-    canvas.addEventListener('pointercancel', ()=>{ isDrawing=false; });
+  canvas.addEventListener('pointerdown', (e)=>{
+    isDrawing=true;
+    const rect=canvas.getBoundingClientRect();
+    lastX = e.clientX - rect.left;
+    lastY = e.clientY - rect.top;
+  });
+  canvas.addEventListener('pointermove', (e)=>{
+    if(!isDrawing) return;
+    const rect=canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    ctx.beginPath(); ctx.moveTo(lastX,lastY); ctx.lineTo(x,y); ctx.stroke();
+    lastX = x; lastY = y;
+  });
+  canvas.addEventListener('pointerup', ()=> isDrawing=false);
+  canvas.addEventListener('pointercancel', ()=> isDrawing=false);
+}
 
-    // touch-action none to prevent scrolling while drawing
-    canvas.style.touchAction = 'none';
-}
-function clearSignatureCanvas(){
-    if(!ctx) return;
-    ctx.clearRect(0,0,canvas.width,canvas.height);
-}
 function openSignatureModal(){
-    // If mobile: make modal fullscreen-looking and enlarge canvas to landscape-ish
-    const modal = document.getElementById('signature-modal');
-    modal.classList.remove('hidden');
-
-    // adjust canvas size for mobile for a more horizontal space
-    const isMobile = window.innerWidth < 768;
-    const c = document.getElementById('signature-canvas');
-    if(isMobile){
-        // target a wide canvas that fits the viewport in landscape-ish ratio
-        const w = Math.max(window.innerWidth, window.innerHeight) - 40;
-        const h = Math.min(window.innerHeight, Math.floor(window.innerWidth * 0.55));
-        c.width = Math.max(800, Math.floor(w));
-        c.height = Math.max(240, Math.floor(h));
-        c.style.width = '100%';
-        c.style.height = 'auto';
-        document.getElementById('signature-instruction').innerText = 'Gira el dispositivo a horizontal para firmar con mayor comodidad.';
-    } else {
-        // desktop: keep default reasonable size
-        c.width = 900;
-        c.height = 300;
-        c.style.width = '100%';
-        c.style.height = 'auto';
-        document.getElementById('signature-instruction').innerText = 'Firme dentro del recuadro usando su ratón o trackpad.';
-    }
-
-    // re-init drawing context so coordinates map to new size
-    initializeSignatureCanvas();
+  const modal = document.getElementById('signature-modal');
+  modal.classList.remove('hidden');
+  adjustSignatureSize(); // set canvas size depending on device
+  initializeSignatureCanvas();
 }
+
 function closeSignatureModal(){ document.getElementById('signature-modal').classList.add('hidden'); }
 
-function saveSignature(){
-    if(!canvas) return;
-    const temp = document.createElement('canvas'); temp.width = canvas.width; temp.height = canvas.height;
-    const tctx=temp.getContext('2d');
-    tctx.fillStyle='#FFFFFF'; tctx.fillRect(0,0,temp.width,temp.height);
-    tctx.drawImage(canvas,0,0);
-    const data = temp.toDataURL('image/png');
-    // check blank
-    const blank = (function(){
-        const b = document.createElement('canvas'); b.width=temp.width; b.height=temp.height; return b.toDataURL();
-    })();
-    if(data === blank){ showMessage('Error: La firma no puede estar vacía.','error'); return; }
-    signatureDataURL = data;
-    document.getElementById('firma_base64').value = data;
-    const img = document.getElementById('signature-image'); img.src = data; img.classList.remove('hidden'); document.getElementById('signature-placeholder').classList.add('hidden');
-    // mobile display
-    const sigBox = document.getElementById('signature-display-box-m');
-    if(sigBox){ sigBox.innerHTML = '<img src="'+data+'" style="max-width:100%; max-height:80px; object-fit:contain"/>'; }
-    closeSignatureModal();
-    showMessage('Firma guardada con éxito.','success');
+function adjustSignatureSize(){
+  const c = document.getElementById('signature-canvas');
+  const isMobile = window.innerWidth < 768;
+  if(isMobile){
+    // wide canvas to allow horizontal signature on mobile
+    const w = Math.max(window.innerWidth, window.innerHeight) - 40;
+    const h = Math.max(220, Math.floor(window.innerHeight * 0.45));
+    c.width = Math.max(800, Math.floor(w));
+    c.height = Math.max(240, Math.floor(h));
+    c.style.width = '100%';
+    c.style.height = 'auto';
+    document.getElementById('signature-instruction').innerText = 'Gira el dispositivo a horizontal para firmar con mayor comodidad.';
+  } else {
+    c.width = 900; c.height = 300;
+    c.style.width = '100%'; c.style.height = 'auto';
+    document.getElementById('signature-instruction').innerText = 'Firme con ratón o touchpad.';
+  }
 }
 
-/* ---------------- Form Logic ---------------- */
+function clearSignatureCanvas(){
+  if(!ctx) return;
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+}
+
+function saveSignature(){
+  if(!canvas) return;
+  const tmp = document.createElement('canvas'); tmp.width = canvas.width; tmp.height = canvas.height;
+  const tctx = tmp.getContext('2d'); tctx.fillStyle='#fff'; tctx.fillRect(0,0,tmp.width,tmp.height); tctx.drawImage(canvas,0,0);
+  const data = tmp.toDataURL('image/png');
+  // check blank
+  const blank = document.createElement('canvas'); blank.width = tmp.width; blank.height = tmp.height; if(data === blank.toDataURL()){ showMessage('Firma vacía','error'); return; }
+  document.getElementById('firma_base64').value = data;
+  const img = document.getElementById('signature-image'); if(img){ img.src = data; img.classList.remove('hidden'); }
+  const disp = document.getElementById('signature-display-box');
+  if(disp) disp.innerHTML = '<img src="'+data+'" style="max-width:100%; max-height:80px; object-fit:contain"/>';
+  const dispm = document.getElementById('signature-display-box-m');
+  if(dispm) dispm.innerHTML = '<img src="'+data+'" style="max-width:100%; max-height:80px; object-fit:contain"/>';
+  closeSignatureModal();
+  showMessage('Firma guardada','success');
+  saveDraft();
+}
+
+/* ---------------- Form & Wizard ---------------- */
 function initStrategyBoxes(){
-    document.querySelectorAll('.strategy-checkbox').forEach(cb => toggleStrategyBox(cb));
+  document.querySelectorAll('.strategy-box').forEach(box=>{
+    box.addEventListener('click', (e)=>{
+      const cb = box.querySelector('input[type="checkbox"]');
+      if(cb){ cb.checked = !cb.checked; toggleStrategyBox(cb); }
+    });
+  });
 }
 function toggleStrategyBox(checkbox){
-    const box = checkbox.closest('.strategy-box');
-    if(checkbox.checked) box.classList.add('selected'); else box.classList.remove('selected');
-    saveDraft();
+  const box = checkbox.closest('.strategy-box');
+  if(checkbox.checked) box.classList.add('selected'); else box.classList.remove('selected');
+  saveDraft();
 }
 
-/* ---------------- Event listeners ---------------- */
-function setupEventListeners(){
-    document.querySelectorAll('#check-list-1-2 .answer-btn-1-2, #subseccion-1-3 .answer-btn-1-3').forEach(btn => {
-        btn.addEventListener('click', (e)=>{ handleAnswerClick(e.target); });
-    });
-    document.querySelectorAll('#subseccion-1-3 .answer-btn-1-3').forEach(btn => {
-        btn.addEventListener('click', ()=> saveDraft());
-    });
-    document.querySelectorAll('#etapa1-section input, #etapa1-section textarea').forEach(inp => {
-        inp.addEventListener('input', debounce(saveDraft,300));
-    });
-    document.getElementById('wizard-next')?.addEventListener('click', wizardNext);
-    document.getElementById('wizard-prev')?.addEventListener('click', wizardPrev);
-    // NOTE: Save draft button removed from UI so no listener here
-
-    // Preview & PDF
-    document.getElementById('download-pdf-btn')?.addEventListener('click', () => {
-        document.getElementById('download-pdf-btn').disabled = true;
-        document.getElementById('download-pdf-btn').innerText = 'Generando PDF...';
-        downloadPdfAndClose().finally(()=>{
-            document.getElementById('download-pdf-btn').disabled = false;
-            document.getElementById('download-pdf-btn').innerText = '📥 Descargar PDF';
-        });
-    });
-
-    document.getElementById('preview-art-btn')?.addEventListener('click', ()=> {
-        // open preview respecting mobile mode
-        if(isMobileMode){
-            mobileImagePreviewFlow();
-        } else {
-            showPdfPreview();
-        }
-    });
-
-    document.getElementById('load-history-btn')?.addEventListener('click', loadArtHistory);
+/* Answer buttons for desktop/mobile */
+function wireAnswerButtons(){
+  document.querySelectorAll('#check-list-1-2 .ans-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=> handleAnswer(btn));
+  });
+  document.querySelectorAll('#subseccion-1-3 .ans-btn-1-3').forEach(btn=>{
+    btn.addEventListener('click', ()=> handleAnswer(btn));
+  });
+  document.querySelectorAll('#subseccion-1-3 .ans-btn-doc').forEach(btn=>{
+    btn.addEventListener('click', ()=> handleDocAnswer(btn));
+  });
 }
 
-/* Handle answer visuals */
-function handleAnswerClick(targetButton){
-    const selectedAnswer = targetButton.getAttribute('data-answer');
-    const parentDiv = targetButton.closest('div[data-pregunta]');
-    const preguntaKey = parentDiv.getAttribute('data-pregunta');
+function handleAnswer(btn){
+  const parent = btn.closest('[data-pregunta]');
+  if(!parent) return;
+  const buttons = parent.querySelectorAll('button');
+  buttons.forEach(b => b.classList.remove('btn-selected'));
+  btn.classList.add('btn-selected');
+  // mark colors
+  buttons.forEach(b=>{
+    if(b.getAttribute('data-answer')==='Si') b.classList.replace('bg-green-500','bg-green-500');
+    if(b.getAttribute('data-answer')==='No') b.classList.replace('bg-red-500','bg-red-500');
+  });
+  checkNoAnswers();
+  saveDraft();
+}
 
-    parentDiv.querySelectorAll('button').forEach(btn => {
-        btn.classList.remove('btn-selected');
-        if(btn.getAttribute('data-answer') === 'Si'){ btn.classList.replace('bg-green-700','bg-green-500'); }
-        else { btn.classList.replace('bg-red-700','bg-red-500'); }
-    });
-
-    targetButton.classList.add('btn-selected');
-    if(selectedAnswer === 'Si'){ targetButton.classList.replace('bg-green-500','bg-green-700'); }
-    else { targetButton.classList.replace('bg-red-500','bg-red-700'); }
-
-    if(preguntaKey === 'documento_regula'){
-        const isSi = selectedAnswer === 'Si';
-        const textarea = document.getElementById('documento_tipo');
-        if(isSi){ textarea.classList.remove('hidden'); }
-        else { textarea.classList.add('hidden'); textarea.value=''; }
-    }
-
-    checkNoAnswers();
-    saveDraft();
+function handleDocAnswer(btn){
+  const parent = btn.closest('[data-pregunta]');
+  if(!parent) return;
+  const buttons = parent.querySelectorAll('button');
+  buttons.forEach(b => b.classList.remove('btn-selected'));
+  btn.classList.add('btn-selected');
+  // show/hide textarea
+  const txt = document.getElementById('documento_tipo');
+  if(btn.getAttribute('data-answer') === 'Si') txt.classList.remove('hidden'); else { txt.classList.add('hidden'); txt.value=''; }
+  saveDraft();
 }
 
 function checkNoAnswers(){
-    let hasNo = false;
-    const list12 = document.getElementById('check-list-1-2');
-    if(list12){
-        list12.querySelectorAll('div[data-pregunta]').forEach(div=>{
-            const noB = div.querySelector('button[data-answer="No"]');
-            if(noB && noB.classList.contains('btn-selected')) hasNo = true;
-        });
-    }
-    const q131Div = document.querySelector('div[data-pregunta="capacitado_prevencion"]');
-    const no131 = q131Div?.querySelector('button[data-answer="No"]');
-    if(no131 && no131.classList.contains('btn-selected')) hasNo = true;
-    const alertEl = document.getElementById('no-iniciar-alert-1-2');
-    if(hasNo) alertEl.classList.remove('hidden'); else alertEl.classList.add('hidden');
-    return hasNo;
+  let hasNo = false;
+  document.querySelectorAll('#check-list-1-2 [data-pregunta]').forEach(div=>{
+    const noBtn = div.querySelector('button[data-answer="No"]');
+    if(noBtn && noBtn.classList.contains('btn-selected')) hasNo = true;
+  });
+  const capacitado = document.querySelector('#subseccion-1-3 [data-pregunta="capacitado_prevencion"]');
+  if(capacitado){
+    const noCap = capacitado.querySelector('button[data-answer="No"]');
+    if(noCap && noCap.classList.contains('btn-selected')) hasNo = true;
+  }
+  const alert = document.getElementById('no-iniciar-alert');
+  if(hasNo) alert.classList.remove('hidden'); else alert.classList.add('hidden');
+  return hasNo;
 }
 
-/* ---------------- Collect data ---------------- */
-function collectFormData(checkFirma = true){
-    const firma = document.getElementById('firma_base64').value;
-    if(checkFirma && !firma){ showMessage('Error: La firma del supervisor es obligatoria para previsualizar/guardar.','error'); return null; }
-    const requiredInputs = ['empresa','supervisor','area','lugar_especifico','fecha','hora_inicio','hora_termino','descripcion'];
-    for(const id of requiredInputs){
-        const val = document.getElementById(id).value || '';
-        if(!val.trim()){ showMessage('Error: El campo '+id.toUpperCase()+' es obligatorio.','error'); return null; }
-    }
+/* ---------------- Collect / Validate ---------------- */
+function collectFormData(requireSignature = true){
+  // signature required
+  const firma = document.getElementById('firma_base64').value;
+  if(requireSignature && !firma){ showMessage('Firma del supervisor requerida','error'); return null; }
 
-    const antecedentes = {
-        empresa: document.getElementById('empresa').value,
-        supervisor: document.getElementById('supervisor').value,
-        area: document.getElementById('area').value,
-        lugar_especifico: document.getElementById('lugar_especifico').value,
-        fecha: document.getElementById('fecha').value,
-        hora_inicio: document.getElementById('hora_inicio').value,
-        hora_termino: document.getElementById('hora_termino').value,
-        descripcion: document.getElementById('descripcion').value,
-        firma_base64: document.getElementById('firma_base64').value
-    };
+  // required fields
+  const req = ['empresa','supervisor','area','lugar_especifico','fecha','hora_inicio','hora_termino','descripcion'];
+  for(const id of req){
+    const val = document.getElementById(id).value;
+    if(!val || !String(val).trim()){ showMessage('Complete el campo: ' + id,'error'); return null; }
+  }
 
-    const chequeo_trabajador = {};
-    for(const div of document.querySelectorAll('#check-list-1-2 > div')){
-        const key = div.getAttribute('data-pregunta');
-        const sel = div.querySelector('.btn-selected');
-        if(!sel){ showMessage(`Error: Debe contestar la pregunta sobre '${key}' (Trabajador).`,'error'); return null; }
-        chequeo_trabajador[key] = sel.getAttribute('data-answer');
-    }
+  // coleta preguntas
+  const trabajador = {};
+  document.querySelectorAll('#check-list-1-2 > div').forEach(div=>{
+    const key = div.getAttribute('data-pregunta');
+    const sel = div.querySelector('.btn-selected');
+    trabajador[key] = sel ? sel.getAttribute('data-answer') : '';
+  });
 
-    const chequeo_tarea = {};
-    for(const div of document.querySelectorAll('#subseccion-1-3 > div')){
-        const key = div.getAttribute('data-pregunta');
-        const sel = div.querySelector('.btn-selected');
-        if(!sel){ showMessage(`Error: Debe contestar la pregunta sobre '${key}' (Tarea).`,'error'); return null; }
-        chequeo_tarea[key] = sel.getAttribute('data-answer');
-    }
-    const docInput = document.getElementById('documento_tipo');
-    chequeo_tarea.documento_tipo = docInput && !docInput.classList.contains('hidden') ? docInput.value.trim() : '';
+  // tarea
+  const tarea = {};
+  document.querySelectorAll('#subseccion-1-3 > div').forEach(div=>{
+    const key = div.getAttribute('data-pregunta');
+    const sel = div.querySelector('.btn-selected');
+    tarea[key] = sel ? sel.getAttribute('data-answer') : '';
+  });
+  tarea.documento_tipo = document.getElementById('documento_tipo').value || '';
 
-    const estrategias_control = [];
-    document.querySelectorAll('.strategy-checkbox').forEach(cb => { if(cb.checked) estrategias_control.push(cb.getAttribute('data-strategy-name')); });
+  const estrategias = [];
+  document.querySelectorAll('.strategy-checkbox').forEach(cb=>{
+    if(cb.checked) estrategias.push(cb.getAttribute('data-strategy-name'));
+  });
 
-    return {
-        id: crypto.randomUUID(),
-        antecedentes,
-        chequeo: { trabajador: chequeo_trabajador, tarea: chequeo_tarea },
-        estrategias_control,
-        timestamp: new Date().toISOString(),
-        savedBy: userId
-    };
+  return {
+    id: crypto.randomUUID ? crypto.randomUUID() : ('id-'+Date.now()),
+    antecedentes: {
+      empresa: document.getElementById('empresa').value,
+      supervisor: document.getElementById('supervisor').value,
+      area: document.getElementById('area').value,
+      lugar_especifico: document.getElementById('lugar_especifico').value,
+      fecha: document.getElementById('fecha').value,
+      hora_inicio: document.getElementById('hora_inicio').value,
+      hora_termino: document.getElementById('hora_termino').value,
+      descripcion: document.getElementById('descripcion').value,
+      firma_base64: document.getElementById('firma_base64').value
+    },
+    chequeo: { trabajador, tarea },
+    estrategias_control: estrategias,
+    timestamp: new Date().toISOString(),
+    savedBy: userId
+  };
 }
 
-/* ---------------- PDF HTML generation (fixed A4) ---------------- */
-function generatePdfHtml(artData){
-    const { antecedentes, chequeo, estrategias_control, timestamp } = artData;
-    const logoSvg = `<svg width="72" height="72" viewBox="0 0 72 72" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-        <circle cx="36" cy="36" r="34" fill="#f3f4f6" stroke="#cbd5e1" stroke-width="2"/>
-        <text x="36" y="40" font-size="9" font-family="Inter, sans-serif" font-weight="700" text-anchor="middle" fill="#374151">TU LOGO</text>
-        <text x="36" y="51" font-size="8" font-family="Inter, sans-serif" text-anchor="middle" fill="#6b7280">AQUÍ</text>
-    </svg>`;
+/* ---------------- PDF HTML generator ---------------- */
+function generatePdfHtml(art){
+  const logoSvg = `<svg width="72" height="72" viewBox="0 0 72 72" xmlns="http://www.w3.org/2000/svg"><circle cx="36" cy="36" r="34" fill="#f3f4f6" stroke="#cbd5e1" stroke-width="2"/><text x="36" y="40" font-size="9" font-family="Inter, sans-serif" font-weight="700" text-anchor="middle" fill="#374151">TU LOGO</text></svg>`;
+  function renderChecklist(obj, questions, keys){
+    return keys.map((k,i)=>`<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px dashed #eef2f7"><div style="width:75%">${questions[i]}</div><div style="width:25%;text-align:right">${obj[k] || 'N/A'}</div></div>`).join('');
+  }
 
-    function renderChecklist(data, questions, keys){
-        return keys.map((key,i)=>{
-            const ans = data[key] || 'N/A';
-            const cls = ans === 'Si' ? 'pdf-check-result-si' : (ans==='No' ? 'pdf-check-result-no' : '');
-            return `<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px dashed #eef2f7">
-                <div style="width:75%">${questions[i]}</div><div style="width:25%;text-align:right" class="${cls}">${ans}</div>
-            </div>`;
-        }).join('');
-    }
+  const workerHtml = renderChecklist(art.chequeo.trabajador, [
+    "1. ¿Me encuentro en condiciones físicas y psicológicas para realizar la tarea?",
+    "2. ¿Las condiciones del entorno permiten realizar mi trabajo de manera segura?",
+    "3. ¿Verifiqué que las áreas de desplazamiento y trabajo se encuentran en condiciones?",
+    "4. ¿Poseo todos los EPP específicos para la tarea?",
+    "5. ¿Dispongo de equipos y herramientas apropiadas, en buen estado y con inspección al día?",
+    "6. ¿Sé cómo activar y actuar ante una emergencia?"
+  ], ['condiciones_fisicas','condiciones_entorno','areas_condiciones','epp_especificos','equipos_herramientas','actuar_emergencia']);
 
-    const workerHtml = renderChecklist(chequeo.trabajador, [
-        "1. ¿Me encuentro en condiciones físicas y psicológicas para realizar la tarea?",
-        "2. ¿Las condiciones del entorno permiten realizar mi trabajo de manera segura?",
-        "3. ¿Verifiqué que las áreas de desplazamiento y trabajo se encuentran en condiciones?",
-        "4. ¿Poseo todos los EPP específicos para la tarea?",
-        "5. ¿Dispongo de equipos y herramientas adecuadas e inspeccionadas?",
-        "6. ¿Sé cómo activar y actuar ante una emergencia?"
-    ], ['condiciones_fisicas','condiciones_entorno','areas_condiciones','epp_especificos','equipos_herramientas','actuar_emergencia']);
+  const taskHtml = renderChecklist(art.chequeo.tarea, [
+    "1. ¿Estoy capacitado(a) y conozco las medidas de prevención definidas?",
+    "2. ¿Existe algún documento que regule mi trabajo o tarea?",
+    "3. ¿El documento incluye todas las actividades (alcance)?"
+  ], ['capacitado_prevencion','documento_regula','alcance_actividades']);
 
-    const taskHtml = renderChecklist(chequeo.tarea, [
-        "1. ¿Estoy capacitado(a) y conozco las medidas de prevención definidas?",
-        "2. ¿Existe algún documento que regule mi trabajo o tarea?",
-        "3. ¿El documento incluye todas las actividades (alcance)?"
-    ], ['capacitado_prevencion','documento_regula','alcance_actividades']);
+  const estrategiasHtml = art.estrategias_control.length ? `<ul>${art.estrategias_control.map(e=>`<li>${e}</li>`).join('')}</ul>` : '<p style="color:#6b7280">No se seleccionaron estrategias.</p>';
 
-    const estrategiasHtml = estrategias_control.length ? `<ul style="margin:8px 0 0 18px">${estrategias_control.map(e=>`<li>${e}</li>`).join('')}</ul>` : `<p style="color:#6b7280;font-style:italic">No se seleccionaron estrategias de control.</p>`;
-
-    const html =
-`<div style="width:100%; background:#fff; padding:0; box-sizing:border-box;">
-    <div style="display:flex;justify-content:space-between;align-items:flex-start">
-        <div>
-            <div class="pdf-title">ANÁLISIS DE RIESGOS DE LA TAREA (ART)</div>
-            <div class="pdf-subtitle">Documento generado el: ${new Date(timestamp).toLocaleString()} — ID Local: ${artData.savedBy}</div>
-        </div>
-        <div style="text-align:right">${logoSvg}</div>
+  return `
+  <div style="width:794px; min-height:1123px; padding:20px; box-sizing:border-box; background:#fff; color:#111827;">
+    <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+      <div>
+        <div style="font-weight:700; color:#b91c1c; font-size:18px;">ANÁLISIS DE RIESGOS DE LA TAREA (ART)</div>
+        <div style="font-size:11px; color:#6b7280; margin-top:6px;">Generado: ${new Date(art.timestamp).toLocaleString()} — ${art.savedBy}</div>
+      </div>
+      <div>${logoSvg}</div>
     </div>
 
-    <h3 class="pdf-section-title">1.1) ANTECEDENTES DEL TRABAJO</h3>
-    <div>
-        <div class="pdf-data-item"><span class="pdf-data-label">NOMBRE DE LA EMPRESA:</span><span class="pdf-data-value">${antecedentes.empresa.toUpperCase()}</span></div>
-        <div class="pdf-data-item"><span class="pdf-data-label">SUPERVISOR RESPONSABLE:</span><span class="pdf-data-value">${antecedentes.supervisor.toUpperCase()}</span></div>
-        <div class="pdf-data-item"><span class="pdf-data-label">ÁREA DE TRABAJO:</span><span class="pdf-data-value">${antecedentes.area.toUpperCase()}</span></div>
-        <div class="pdf-data-item"><span class="pdf-data-label">LUGAR ESPECÍFICO:</span><span class="pdf-data-value">${antecedentes.lugar_especifico.toUpperCase()}</span></div>
-        <div class="pdf-data-item"><span class="pdf-data-label">FECHA:</span><span class="pdf-data-value">${antecedentes.fecha}</span></div>
-        <div class="pdf-data-item"><span class="pdf-data-label">HORARIO DE TRABAJO:</span><span class="pdf-data-value">${antecedentes.hora_inicio} - ${antecedentes.hora_termino}</span></div>
-        <div style="margin-top:8px;"><span class="pdf-data-label block">DESCRIPCIÓN DE LA TAREA:</span><div style="border:1px solid #eef2f7;padding:6px;margin-top:6px;background:#f8fafc">${antecedentes.descripcion.toUpperCase()}</div></div>
+    <h3 style="margin-top:12px; font-weight:700; color:#0f4b8f;">1.1 Antecedentes</h3>
+    <div style="margin-top:6px;">
+      <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #eef2f7;"><div style="width:40%;font-weight:700">Empresa:</div><div style="width:60%;text-align:right">${art.antecedentes.empresa}</div></div>
+      <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #eef2f7;"><div style="width:40%;font-weight:700">Supervisor:</div><div style="width:60%;text-align:right">${art.antecedentes.supervisor}</div></div>
+      <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #eef2f7;"><div style="width:40%;font-weight:700">Área:</div><div style="width:60%;text-align:right">${art.antecedentes.area}</div></div>
+      <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #eef2f7;"><div style="width:40%;font-weight:700">Lugar:</div><div style="width:60%;text-align:right">${art.antecedentes.lugar_especifico}</div></div>
+      <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #eef2f7;"><div style="width:40%;font-weight:700">Fecha:</div><div style="width:60%;text-align:right">${art.antecedentes.fecha}</div></div>
+      <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #eef2f7;"><div style="width:40%;font-weight:700">Horario:</div><div style="width:60%;text-align:right">${art.antecedentes.hora_inicio} - ${art.antecedentes.hora_termino}</div></div>
     </div>
 
-    <div style="margin-top:12px;">
-        <div><strong>FIRMA DEL SUPERVISOR:</strong></div>
-        <div class="pdf-signature-box"><img src="${antecedentes.firma_base64}" style="max-width:100%; max-height:90px; object-fit:contain;"></div>
-    </div>
+    <div style="margin-top:10px;"><strong>Descripción</strong><div style="border:1px solid #eef2f7;padding:8px;margin-top:6px;background:#f8fafc">${art.antecedentes.descripcion}</div></div>
 
-    <h3 class="pdf-section-title" style="border-color:#ef4444;color:#b91c1c">1.2) DE LOS TRABAJADORES</h3>
+    <div style="margin-top:10px;"><strong>Firma</strong><div style="border:1px solid #eef2f7;padding:8px;margin-top:6px;background:#fff;height:90px;display:flex;align-items:center;justify-content:center;"><img src="${art.antecedentes.firma_base64}" style="max-height:80px;object-fit:contain" /></div></div>
+
+    <h3 style="margin-top:10px;font-weight:700;color:#b91c1c">1.2 Chequeo Trabajadores</h3>
     <div>${workerHtml}</div>
 
-    <p style="color:#b91c1c;font-weight:700;margin-top:6px">ALERTA: Un "NO" en 1.2 o 1.3.1 significa NO INICIAR LA TAREA.</p>
+    <h3 style="margin-top:10px;font-weight:700;color:#0f4b8f">1.3 De la tarea</h3>
+    <div>${taskHtml}</div>
 
-    <h3 class="pdf-section-title" style="border-color:#3b82f6;color:#0f4b8f">1.3) DE LA TAREA</h3>
-    <div>${taskHtml}${chequeo.tarea.documento_tipo ? `<div style="margin-top:6px"><strong>Documento indicado:</strong> ${chequeo.tarea.documento_tipo}</div>` : ''}</div>
-
-    <h3 class="pdf-section-title" style="border-color:#0d9488;color:#0f766e">1.4) ESTRATEGIAS DE CONTROL APLICADAS</h3>
-    <div>${estrategiasHtml}</div>
-</div>`;
-    return html;
+    <h3 style="margin-top:10px;font-weight:700;color:#0f766e">1.4 Estrategias aplicadas</h3>
+    ${estrategiasHtml}
+  </div>
+  `;
 }
 
-/* ---------------- Show Preview (desktop) ---------------- */
-window.showPdfPreview = function(){
-    const artData = collectFormData(true);
-    if(!artData) return;
-    const pdfHtml = generatePdfHtml(artData);
-    const pdfContainer = document.getElementById('pdf-content');
-    pdfContainer.innerHTML = pdfHtml;
+/* wait for images to load in a container */
+function waitForImages(container){
+  const imgs = Array.from(container.querySelectorAll('img'));
+  const promises = imgs.map(img=>{
+    if(img.complete) return Promise.resolve();
+    return new Promise((res)=>{ img.onload=res; img.onerror=res; setTimeout(res,5000); });
+  });
+  return Promise.all(promises);
+}
+
+/* ---------------- Preview (desktop) ---------------- */
+function showPdfPreview(){
+  const data = collectFormData(true);
+  if(!data) return;
+  const html = generatePdfHtml(data);
+  const pdfContent = document.getElementById('pdf-content');
+  pdfContent.innerHTML = html;
+  // ensure images load
+  waitForImages(pdfContent).then(()=> {
     document.getElementById('pdf-preview-modal').classList.remove('hidden');
-    const defaultName = `ART_${(new Date()).toISOString().slice(0,10)}_${artData.antecedentes.supervisor.replace(/\s+/g,'_').slice(0,30) || 'ART'}.pdf`;
-    document.getElementById('pdf-filename-input').value = defaultName;
+    document.getElementById('pdf-filename-input').value = `ART_${(new Date()).toISOString().slice(0,10)}_${data.antecedentes.supervisor.replace(/\s+/g,'_').slice(0,30)}`;
+  });
 }
 
-/* ---------------- Mobile preview: render PDF-HTML to image and show ---------------- */
+/* ---------------- Mobile preview as IMAGE ---------------- */
 async function mobileImagePreviewFlow(){
-    // collect data
-    const artData = collectFormData(true);
-    if(!artData) return;
+  const data = collectFormData(true);
+  if(!data) return;
 
-    // create off-DOM container with the PDF HTML sized to A4 px
-    const tempContainer = document.createElement('div');
-    tempContainer.style.width = '794px';
-    tempContainer.style.minHeight = '1123px';
-    tempContainer.style.boxSizing = 'border-box';
-    tempContainer.style.padding = '0';
-    tempContainer.style.background = '#ffffff';
-    tempContainer.style.color = '#111827';
-    tempContainer.style.margin = '0 auto';
-    tempContainer.innerHTML = generatePdfHtml(artData);
+  // build offscreen node
+  const tmp = document.createElement('div');
+  tmp.style.width = '794px';
+  tmp.style.minHeight = '1123px';
+  tmp.style.boxSizing = 'border-box';
+  tmp.style.padding = '0';
+  tmp.style.background = '#fff';
+  tmp.style.position = 'fixed';
+  tmp.style.left = '-9999px';
+  tmp.innerHTML = generatePdfHtml(data);
+  document.body.appendChild(tmp);
 
-    // attach off-screen (not visible) but in DOM so html2canvas can read fonts/images
-    tempContainer.style.position = 'fixed';
-    tempContainer.style.left = '-9999px';
-    document.body.appendChild(tempContainer);
+  try{
+    await waitForImages(tmp);
+    const canvas = await html2canvas(tmp, {scale:2, useCORS:true, backgroundColor:'#ffffff', scrollY: -window.scrollY});
+    const url = canvas.toDataURL('image/png');
 
-    try {
-        // render to canvas at scale 2 for quality
-        const canvasImg = await html2canvas(tempContainer, { scale: 2, useCORS: true, backgroundColor: '#ffffff', scrollY: -window.scrollY });
-        const dataUrl = canvasImg.toDataURL('image/png');
-
-        // show in preview modal as image
-        const pdfContent = document.getElementById('pdf-content');
-        pdfContent.innerHTML = `<img src="${dataUrl}" alt="Preview PDF" style="width:100%; height:auto; display:block;"/>`;
-        document.getElementById('pdf-preview-modal').classList.remove('hidden');
-
-        // set default filename
-        const defaultName = `ART_${(new Date()).toISOString().slice(0,10)}_${artData.antecedentes.supervisor.replace(/\s+/g,'_').slice(0,30) || 'ART'}.pdf`;
-        document.getElementById('pdf-filename-input').value = defaultName;
-
-    } catch(err){
-        console.error('Error generando preview-imagen', err);
-        showMessage('Error generando preview en imagen: ' + (err.message || err), 'error');
-    } finally {
-        // remove temp
-        document.body.removeChild(tempContainer);
-    }
+    // show image in preview container
+    const pdfContent = document.getElementById('pdf-content');
+    pdfContent.innerHTML = `<img src="${url}" style="width:100%;height:auto;display:block" alt="preview"/>`;
+    document.getElementById('pdf-filename-input').value = `ART_${(new Date()).toISOString().slice(0,10)}_${data.antecedentes.supervisor.replace(/\s+/g,'_').slice(0,30)}`;
+    document.getElementById('pdf-preview-modal').classList.remove('hidden');
+  }catch(e){
+    console.error(e); showMessage('Error generando preview imagen','error');
+  }finally{
+    document.body.removeChild(tmp);
+  }
 }
 
-/* ---------------- Download PDF (html2pdf) ---------------- */
+/* ---------------- Download PDF (from constructed HTML) ---------------- */
 async function downloadPdfAndClose(){
-    try{
-        const artData = collectFormData(true);
-        if(!artData) return;
+  try{
+    const data = collectFormData(true);
+    if(!data) return;
 
-        // ensure content up to date
-        const element = document.createElement('div');
-        element.innerHTML = generatePdfHtml(artData);
-        // style to match pdf-page
-        element.style.width = '794px';
-        element.style.minHeight = '1123px';
-        element.style.boxSizing = 'border-box';
-        element.style.padding = '0';
-        element.style.background = '#ffffff';
+    // create element to render
+    const el = document.createElement('div');
+    el.style.width = '794px';
+    el.style.minHeight = '1123px';
+    el.style.boxSizing = 'border-box';
+    el.style.padding = '0';
+    el.style.background = '#fff';
+    el.style.position = 'fixed';
+    el.style.left = '-9999px';
+    el.innerHTML = generatePdfHtml(data);
+    document.body.appendChild(el);
 
-        // attach off-screen so html2pdf can render it
-        element.style.position = 'fixed';
-        element.style.left = '-9999px';
-        document.body.appendChild(element);
+    await waitForImages(el);
 
-        // filename
-        let filename = String(document.getElementById('pdf-filename-input').value || '').trim();
-        if(!filename) filename = `ART_${(new Date()).toISOString().slice(0,10)}_${artData.antecedentes.supervisor.replace(/\s+/g,'_').slice(0,30) || 'ART'}.pdf`;
-        if(!filename.toLowerCase().endsWith('.pdf')) filename += '.pdf';
+    let filename = document.getElementById('pdf-filename-input').value || `ART_${(new Date()).toISOString().slice(0,10)}_${data.antecedentes.supervisor.replace(/\s+/g,'_').slice(0,30)}`;
+    if(!filename.toLowerCase().endsWith('.pdf')) filename += '.pdf';
 
-        const opt = {
-            margin: 0,
-            filename: filename,
-            image: { type:'jpeg', quality:1 },
-            html2canvas: { scale: 2, useCORS:true, background: '#ffffff', scrollY: 0 },
-            jsPDF: { unit:'mm', format:'a4', orientation:'portrait' },
-            pagebreak: { mode:['avoid-all','css','legacy'] }
-        };
+    const opt = {
+      margin: 0,
+      filename: filename,
+      image: { type:'jpeg', quality:1 },
+      html2canvas: { scale: 2, useCORS:true, backgroundColor:'#ffffff' },
+      jsPDF: { unit:'mm', format:'a4', orientation:'portrait' },
+      pagebreak: { mode:['avoid-all','css','legacy'] }
+    };
 
-        // generate PDF
-        await html2pdf().set(opt).from(element).save();
+    await html2pdf().set(opt).from(el).save();
 
-        // cleanup
-        document.body.removeChild(element);
-        document.getElementById('pdf-preview-modal').classList.add('hidden');
-        showMessage(`PDF generado: ${filename}`, 'success');
+    document.body.removeChild(el);
+    document.getElementById('pdf-preview-modal').classList.add('hidden');
+    showMessage('PDF generado: ' + filename, 'success');
+  }catch(err){
+    console.error(err); showMessage('Error generando PDF: ' + (err.message || err), 'error');
+  }
+}
 
-    } catch(err){
-        console.error('Error generando PDF', err);
-        showMessage('Error al generar PDF: ' + (err.message || err), 'error');
+/* ---------------- Wizard controls & validation ---------------- */
+function applyMode(){
+  isMobileMode = window.innerWidth < 768;
+  const full = document.getElementById('full-form');
+  const wiz = document.getElementById('wizard');
+  if(isMobileMode){ full.classList.add('hidden'); wiz.classList.remove('hidden'); prepareWizard(); }
+  else { full.classList.remove('hidden'); wiz.classList.add('hidden'); }
+}
+
+function handleResize(){
+  const wasMobile = isMobileMode;
+  isMobileMode = window.innerWidth < 768;
+  if(wasMobile !== isMobileMode) applyMode();
+}
+
+function prepareWizard(){
+  if(wizardInitialized) return;
+  wizardInitialized = true;
+  wizardStep = 0;
+  // copy desktop to mobile
+  ['empresa','supervisor','area','lugar_especifico','fecha','hora_inicio','hora_termino','descripcion'].forEach(id=>{
+    const d = document.getElementById(id), m = document.getElementById(id + '_m');
+    if(d && m) m.value = d.value;
+  });
+  buildWizardChecklists();
+  updateWizardUI();
+}
+
+function buildWizardChecklists(){
+  // 1-2
+  const list = document.getElementById('check-list-1-2-m'); list.innerHTML = '';
+  document.querySelectorAll('#check-list-1-2 > div').forEach((div)=>{
+    const q = div.querySelector('div:first-child').innerText;
+    const key = div.getAttribute('data-pregunta');
+    const item = document.createElement('div'); item.className='mb-3';
+    item.innerHTML = `<div class="mb-1">${q}</div><div class="flex gap-2"><button data-key="${key}" data-answer="Si" class="px-3 py-1 bg-green-500 text-white rounded">Sí</button><button data-key="${key}" data-answer="No" class="px-3 py-1 bg-red-500 text-white rounded">No</button></div>`;
+    list.appendChild(item);
+  });
+  list.querySelectorAll('button').forEach(btn=>{
+    btn.addEventListener('click', (e)=>{
+      const key = e.target.getAttribute('data-key'), ans = e.target.getAttribute('data-answer');
+      const desktopDiv = document.querySelector(`#check-list-1-2 > div[data-pregunta="${key}"]`);
+      if(desktopDiv){
+        const desktopBtn = desktopDiv.querySelector(`button[data-answer="${ans}"]`);
+        if(desktopBtn) handleAnswer(desktopBtn);
+      }
+      e.target.parentElement.querySelectorAll('button').forEach(b=>b.classList.remove('ring-2'));
+      e.target.classList.add('ring-2');
+      saveDraft();
+    });
+  });
+
+  // 1-3
+  const cont = document.getElementById('subseccion-1-3-m'); cont.innerHTML = '';
+  document.querySelectorAll('#subseccion-1-3 > div').forEach(div=>{
+    const q = div.querySelector('div:first-child').innerText;
+    const key = div.getAttribute('data-pregunta');
+    const item = document.createElement('div'); item.className='mb-3';
+    item.innerHTML = `<div class="mb-1">${q}</div><div class="flex gap-2"><button data-key="${key}" data-answer="Si" class="px-3 py-1 bg-green-500 text-white rounded">Sí</button><button data-key="${key}" data-answer="No" class="px-3 py-1 bg-red-500 text-white rounded">No</button></div>`;
+    cont.appendChild(item);
+  });
+  cont.querySelectorAll('button').forEach(btn=>{
+    btn.addEventListener('click', (e)=>{
+      const key = e.target.getAttribute('data-key'), ans = e.target.getAttribute('data-answer');
+      const desktopDiv = document.querySelector(`#subseccion-1-3 > div[data-pregunta="${key}"]`);
+      if(desktopDiv){
+        const desktopBtn = desktopDiv.querySelector(`button[data-answer="${ans}"]`);
+        if(desktopBtn) handleAnswer(desktopBtn);
+      }
+      e.target.parentElement.querySelectorAll('button').forEach(b=>b.classList.remove('ring-2'));
+      e.target.classList.add('ring-2');
+      saveDraft();
+    });
+  });
+
+  // estrategias mobile
+  const estr = document.getElementById('estrategias-grid-m'); estr.innerHTML = '';
+  document.querySelectorAll('#estrategias-grid .strategy-box').forEach(box=>{
+    const name = box.querySelector('div > div').innerText;
+    const label = document.createElement('label'); label.className='p-2 border rounded flex items-center justify-between';
+    label.innerHTML = `<span>${name}</span><input type="checkbox" data-strategy-name="${name}" class="strategy-checkbox-m" />`;
+    estr.appendChild(label);
+  });
+  document.querySelectorAll('.strategy-checkbox-m').forEach(cb=>{
+    cb.addEventListener('change', (e)=>{
+      const name = e.target.getAttribute('data-strategy-name');
+      const dcb = document.querySelector(`.strategy-checkbox[data-strategy-name="${name}"]`);
+      if(dcb){ dcb.checked = e.target.checked; toggleStrategyBox(dcb); }
+      saveDraft();
+    });
+  });
+}
+
+function updateWizardUI(){
+  document.querySelectorAll('.wizard-step').forEach((s)=> s.classList.remove('active'));
+  const steps = document.querySelectorAll('.wizard-step');
+  if(steps[wizardStep]) steps[wizardStep].classList.add('active');
+  document.getElementById('wizard-steps-indicator').innerText = `Paso ${wizardStep+1} de ${steps.length}`;
+  document.getElementById('wizard-prev').disabled = wizardStep === 0;
+  document.getElementById('wizard-next').innerText = wizardStep === (steps.length -1) ? 'Previsualizar' : 'Siguiente';
+}
+
+function wizardNext(){
+  // copy fields from mobile step0 to desktop before validations
+  if(wizardStep === 0){
+    ['empresa','supervisor','area','lugar_especifico','fecha','hora_inicio','hora_termino','descripcion'].forEach(id=>{
+      const m = document.getElementById(id + '_m'), d = document.getElementById(id);
+      if(m && d) d.value = m.value;
+    });
+  }
+
+  // validation: do not allow finishing if any critical answer == 'No'
+  if(wizardStep === document.querySelectorAll('.wizard-step').length -1){
+    // last step -> try finish: check critical answers
+    if(checkNoAnswers()){
+      showMessage('Hay respuestas "NO" en preguntas críticas: NO INICIAR LA TAREA. Corrija antes de generar.', 'error');
+      return;
     }
+    // ensure signature exists
+    const firma = document.getElementById('firma_base64').value;
+    if(!firma){ showMessage('Firma requerida', 'error'); return; }
+    // proceed to preview (mobile image)
+    mobileImagePreviewFlow();
+    return;
+  }
+
+  wizardStep++;
+  updateWizardUI();
 }
 
-/* ---------------- Save ART to localStorage ---------------- */
-window.saveArt = function(){
-    const artData = collectFormData();
-    if(!artData) return;
-    try{
-        const historyString = localStorage.getItem(ART_HISTORY_KEY);
-        const history = historyString ? JSON.parse(historyString) : [];
-        history.push(artData);
-        localStorage.setItem(ART_HISTORY_KEY, JSON.stringify(history));
-        showMessage('Chequeo Pre-Tarea guardado localmente con éxito!','success');
-        clearForm();
-    }catch(err){
-        console.error(err);
-        showMessage('Error al guardar: '+err.message,'error');
+function wizardPrev(){ if(wizardStep>0){ wizardStep--; updateWizardUI(); } }
+
+/* ---------------- Draft save/restore ---------------- */
+function saveDraft(){
+  try{
+    const draft = {
+      antecedentes: {
+        empresa: document.getElementById('empresa').value || '',
+        supervisor: document.getElementById('supervisor').value || '',
+        area: document.getElementById('area').value || '',
+        lugar_especifico: document.getElementById('lugar_especifico').value || '',
+        fecha: document.getElementById('fecha').value || '',
+        hora_inicio: document.getElementById('hora_inicio').value || '',
+        hora_termino: document.getElementById('hora_termino').value || '',
+        descripcion: document.getElementById('descripcion').value || '',
+        firma_base64: document.getElementById('firma_base64').value || ''
+      },
+      chequeo: { trabajador:{}, tarea:{} },
+      estrategias: []
+    };
+    document.querySelectorAll('#check-list-1-2 > div').forEach(div=>{
+      const key = div.getAttribute('data-pregunta'); const sel = div.querySelector('.btn-selected');
+      draft.chequeo.trabajador[key] = sel ? sel.getAttribute('data-answer') : '';
+    });
+    document.querySelectorAll('#subseccion-1-3 > div').forEach(div=>{
+      const key = div.getAttribute('data-pregunta'); const sel = div.querySelector('.btn-selected');
+      draft.chequeo.tarea[key] = sel ? sel.getAttribute('data-answer') : '';
+    });
+    document.querySelectorAll('.strategy-checkbox').forEach(cb=>{ if(cb.checked) draft.estrategias.push(cb.getAttribute('data-strategy-name')); });
+    localStorage.setItem(ART_DRAFT_KEY, JSON.stringify(draft));
+  }catch(e){ console.error(e); }
+}
+
+function restoreDraftIfAny(){
+  try{
+    const s = localStorage.getItem(ART_DRAFT_KEY);
+    if(!s) return;
+    const draft = JSON.parse(s);
+    if(draft.antecedentes){
+      Object.keys(draft.antecedentes).forEach(k=>{
+        const el = document.getElementById(k); if(el) el.value = draft.antecedentes[k];
+        const em = document.getElementById(k+'_m'); if(em) em.value = draft.antecedentes[k];
+      });
     }
+    if(draft.chequeo){
+      for(const [k,v] of Object.entries(draft.chequeo.trabajador || {})){
+        const div = document.querySelector(`#check-list-1-2 > div[data-pregunta="${k}"]`);
+        if(div && v){ const btn = div.querySelector(`button[data-answer="${v}"]`); if(btn) handleAnswer(btn); }
+      }
+      for(const [k,v] of Object.entries(draft.chequeo.tarea || {})){
+        const div = document.querySelector(`#subseccion-1-3 > div[data-pregunta="${k}"]`);
+        if(div && v){ const btn = div.querySelector(`button[data-answer="${v}"]`); if(btn) handleAnswer(btn); }
+      }
+    }
+    if(draft.antecedentes && draft.antecedentes.firma_base64){
+      document.getElementById('firma_base64').value = draft.antecedentes.firma_base64;
+      const disp = document.getElementById('signature-display-box'); disp.innerHTML = '<img src="'+draft.antecedentes.firma_base64+'" style="max-width:100%; max-height:80px; object-fit:contain"/>';
+      const dispm = document.getElementById('signature-display-box-m'); if(dispm) dispm.innerHTML = '<img src="'+draft.antecedentes.firma_base64+'" style="max-width:100%; max-height:80px; object-fit:contain"/>';
+    }
+    if(draft.estrategias){
+      document.querySelectorAll('.strategy-checkbox').forEach(cb=>{
+        cb.checked = draft.estrategias.includes(cb.getAttribute('data-strategy-name'));
+        toggleStrategyBox(cb);
+      });
+    }
+  }catch(e){ console.error(e); }
 }
 
-/* ---------------- History / load ---------------- */
-window.loadArtHistory = function(){
-    const historyList = document.getElementById('history-list'); historyList.innerHTML='';
-    document.getElementById('no-history-message').classList.add('hidden');
-    try{
-        const historyString = localStorage.getItem(ART_HISTORY_KEY);
-        const arts = historyString ? JSON.parse(historyString) : [];
-        if(arts.length===0){ document.getElementById('no-history-message').classList.remove('hidden'); showMessage('No hay chequeos guardados','info'); document.getElementById('history-modal').classList.remove('hidden'); return; }
-        arts.sort((a,b)=> new Date(b.timestamp)-new Date(a.timestamp));
-        arts.forEach(art=>{
-            const item=document.createElement('div');
-            item.className='p-3 border rounded-lg shadow-sm hover:bg-gray-50 flex justify-between items-center';
-            item.innerHTML = `<div>
-                <p class="font-semibold text-gray-800">${art.antecedentes.area || 'Sin Área'} (${art.antecedentes.lugar_especifico || 'N/A'})</p>
-                <p class="text-xs text-gray-500">${art.antecedentes.empresa || 'Sin Empresa'} | ${art.antecedentes.hora_inicio || '00:00'} - ${art.antecedentes.hora_termino || '00:00'}</p>
-                <p class="text-xs text-gray-400 font-mono mt-1">Guardado: ${new Date(art.timestamp).toLocaleDateString()}</p>
-            </div>
-            <div class="flex gap-2">
-                <button onclick="loadArtToForm('${art.id}')" class="bg-blue-500 hover:bg-blue-600 text-white font-medium py-1 px-3 rounded-lg text-sm">Cargar</button>
-            </div>`;
-            historyList.appendChild(item);
-        });
-        document.getElementById('history-modal').classList.remove('hidden');
-    }catch(err){ console.error(err); showMessage('Error al cargar historial: '+err.message,'error'); }
+/* ---------------- History ---------------- */
+function saveArt(){
+  const art = collectFormData(true);
+  if(!art) return;
+  try{
+    const hist = JSON.parse(localStorage.getItem(ART_HISTORY_KEY) || '[]');
+    hist.push(art);
+    localStorage.setItem(ART_HISTORY_KEY, JSON.stringify(hist));
+    showMessage('Chequeo guardado localmente','success');
+    clearForm();
+  }catch(e){ console.error(e); showMessage('Error guardando','error'); }
 }
 
-window.loadArtToForm = function(docId){
-    document.getElementById('history-modal').classList.add('hidden');
-    try{
-        const historyString = localStorage.getItem(ART_HISTORY_KEY);
-        const arts = historyString ? JSON.parse(historyString) : [];
-        const art = arts.find(a=>a.id===docId);
-        if(!art){ showMessage('Chequeo no encontrado','error'); return; }
-        clearForm();
-        document.getElementById('empresa').value = art.antecedentes.empresa || '';
-        document.getElementById('supervisor').value = art.antecedentes.supervisor || '';
-        document.getElementById('area').value = art.antecedentes.area || '';
-        document.getElementById('lugar_especifico').value = art.antecedentes.lugar_especifico || '';
-        document.getElementById('fecha').value = art.antecedentes.fecha || '';
-        document.getElementById('hora_inicio').value = art.antecedentes.hora_inicio || '';
-        document.getElementById('hora_termino').value = art.antecedentes.hora_termino || '';
-        document.getElementById('descripcion').value = art.antecedentes.descripcion || '';
-        const firmaBase64 = art.antecedentes.firma_base64 || '';
-        if(firmaBase64){ document.getElementById('firma_base64').value = firmaBase64; const img = document.getElementById('signature-image'); img.src=firmaBase64; img.classList.remove('hidden'); document.getElementById('signature-placeholder').classList.add('hidden'); signatureDataURL = firmaBase64; } else signatureDataURL = '';
-        document.querySelectorAll('#check-list-1-2 > div').forEach(div=>{
-            const key = div.getAttribute('data-pregunta');
-            const answer = art.chequeo.trabajador[key];
-            if(answer && answer!=='N/A'){ const btn = div.querySelector(`button[data-answer="${answer}"]`); if(btn) handleAnswerClick(btn); }
-        });
-        document.querySelectorAll('#subseccion-1-3 > div').forEach(div=>{
-            const key = div.getAttribute('data-pregunta');
-            const answer = art.chequeo.tarea[key];
-            if(answer && answer!=='N/A'){ const btn = div.querySelector(`button[data-answer="${answer}"]`); if(btn) handleAnswerClick(btn); }
-        });
-        const docInput = document.getElementById('documento_tipo'); docInput.value = art.chequeo.tarea.documento_tipo || '';
-        if(art.chequeo.tarea.documento_regula === 'Si') docInput.classList.remove('hidden'); else docInput.classList.add('hidden');
-        document.querySelectorAll('.strategy-checkbox').forEach(cb=>{
-            const name = cb.getAttribute('data-strategy-name');
-            const checked = art.estrategias_control.includes(name);
-            cb.checked = checked; toggleStrategyBox(cb);
-        });
-        checkNoAnswers();
-        showMessage('Chequeo cargado','success');
-    }catch(err){ console.error(err); showMessage('Error al cargar chequeo: '+err.message,'error'); }
+function loadArtHistory(){
+  const list = document.getElementById('history-list'); list.innerHTML='';
+  const hist = JSON.parse(localStorage.getItem(ART_HISTORY_KEY) || '[]');
+  if(!hist.length){ showMessage('No hay historial','info'); return; }
+  hist.reverse().forEach(h=>{
+    const el = document.createElement('div'); el.className='p-2 border rounded flex justify-between items-center';
+    el.innerHTML = `<div><div class="font-semibold">${h.antecedentes.area || 'Área'}</div><div class="text-xs text-gray-500">${new Date(h.timestamp).toLocaleString()}</div></div><div><button class="px-2 py-1 bg-blue-600 text-white rounded" onclick='loadArtToForm("${h.id}")'>Cargar</button></div>`;
+    list.appendChild(el);
+  });
+  document.getElementById('history-modal').classList.remove('hidden');
+}
+
+function loadArtToForm(id){
+  const hist = JSON.parse(localStorage.getItem(ART_HISTORY_KEY) || '[]');
+  const art = hist.find(x=>x.id===id);
+  if(!art){ showMessage('No encontrado','error'); return; }
+  document.getElementById('empresa').value = art.antecedentes.empresa || '';
+  document.getElementById('supervisor').value = art.antecedentes.supervisor || '';
+  document.getElementById('area').value = art.antecedentes.area || '';
+  document.getElementById('lugar_especifico').value = art.antecedentes.lugar_especifico || '';
+  document.getElementById('fecha').value = art.antecedentes.fecha || '';
+  document.getElementById('hora_inicio').value = art.antecedentes.hora_inicio || '';
+  document.getElementById('hora_termino').value = art.antecedentes.hora_termino || '';
+  document.getElementById('descripcion').value = art.antecedentes.descripcion || '';
+  if(art.antecedentes.firma_base64){ document.getElementById('firma_base64').value = art.antecedentes.firma_base64; document.getElementById('signature-display-box').innerHTML = '<img src="'+art.antecedentes.firma_base64+'" style="max-width:100%; max-height:80px; object-fit:contain"/>'; }
+  // restore checks
+  for(const [k,v] of Object.entries(art.chequeo.trabajador || {})){
+    const div = document.querySelector(`#check-list-1-2 > div[data-pregunta="${k}"]`);
+    if(div && v){ const btn = div.querySelector(`button[data-answer="${v}"]`); if(btn) handleAnswer(btn); }
+  }
+  for(const [k,v] of Object.entries(art.chequeo.tarea || {})){
+    const div = document.querySelector(`#subseccion-1-3 > div[data-pregunta="${k}"]`);
+    if(div && v){ const btn = div.querySelector(`button[data-answer="${v}"]`); if(btn) handleAnswer(btn); }
+  }
+  showMessage('Cargado','success');
 }
 
 /* ---------------- Clear form ---------------- */
 function clearForm(){
-    document.getElementById('etapa1-section').querySelectorAll('input[type="text"], input[type="date"], input[type="time"], textarea').forEach(i=>i.value='');
-    document.getElementById('firma_base64').value=''; document.getElementById('signature-image').classList.add('hidden'); document.getElementById('signature-placeholder').classList.remove('hidden'); signatureDataURL='';
-    document.querySelectorAll('#check-list-1-2 button, #subseccion-1-3 button').forEach(btn=>{ btn.classList.remove('btn-selected'); if(btn.getAttribute('data-answer')==='Si') btn.classList.replace('bg-green-700','bg-green-500'); else btn.classList.replace('bg-red-700','bg-red-500'); });
-    document.getElementById('no-iniciar-alert-1-2').classList.add('hidden');
-    const docInput = document.getElementById('documento_tipo'); docInput.classList.add('hidden'); docInput.value='';
-    document.querySelectorAll('.strategy-checkbox').forEach(cb => { cb.checked=false; toggleStrategyBox(cb); });
-    ['empresa_m','supervisor_m','area_m','lugar_especifico_m','fecha_m','hora_inicio_m','hora_termino_m','descripcion_m'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value='';});
-    document.getElementById('signature-display-box-m') && (document.getElementById('signature-display-box-m').innerHTML='Clic aquí para firmar');
-    localStorage.removeItem(ART_DRAFT_KEY);
+  document.querySelectorAll('#full-form input,#full-form textarea').forEach(i=>{ if(i.type!=='checkbox') i.value=''; if(i.type==='checkbox') i.checked = false; });
+  document.querySelectorAll('#check-list-1-2 button,#subseccion-1-3 button').forEach(b=>b.classList.remove('btn-selected'));
+  document.getElementById('signature-display-box').innerHTML = '';
+  document.getElementById('signature-display-box-m') && (document.getElementById('signature-display-box-m').innerHTML = '');
+  document.getElementById('firma_base64').value = '';
+  document.querySelectorAll('.strategy-box').forEach(b=>b.classList.remove('selected'));
+  localStorage.removeItem(ART_DRAFT_KEY);
+  checkNoAnswers();
 }
 
-/* ---------------- Messages ---------------- */
-function showMessage(message,type){
-    const container = document.getElementById('app-container');
-    const bg = type==='success' ? 'bg-green-500' : (type==='error' ? 'bg-red-500' : 'bg-blue-500');
-    const el = document.createElement('div');
-    el.className = `${bg} text-white p-3 rounded-lg shadow-xl fixed top-6 left-1/2 transform -translate-x-1/2 z-50`;
-    el.textContent = message;
-    container.appendChild(el);
-    setTimeout(()=> el.remove(), 3000);
-}
+/* ---------------- Event wiring & start ---------------- */
+window.addEventListener('resize', debounce(handleResize, 250));
+document.getElementById('preview-art-btn').addEventListener('click', ()=> { if(isMobileMode) mobileImagePreviewFlow(); else showPdfPreview(); });
+document.getElementById('download-pdf-btn').addEventListener('click', downloadPdfAndClose);
+document.getElementById('wizard-next').addEventListener('click', wizardNext);
+document.getElementById('wizard-prev').addEventListener('click', wizardPrev);
+document.getElementById('load-history-btn').addEventListener('click', loadArtHistory);
 
-/* ---------------- Device mode & Wizard ---------------- */
-function setupDeviceMode(){
-    isMobileMode = window.innerWidth < 768;
-    applyMode();
-}
-
-/* Correct, single handleResize: only react when width breakpoint crosses */
-function handleResize(){
-    const wasMobile = isMobileMode;
-    isMobileMode = window.innerWidth < 768;
-    if(wasMobile !== isMobileMode) applyMode();
-}
-
-function applyMode(){
-    const fullForm = document.getElementById('full-form'); const wizard = document.getElementById('wizard');
-    if(isMobileMode){ fullForm.classList.add('hidden'); wizard.classList.remove('hidden'); prepareWizard(); }
-    else { fullForm.classList.remove('hidden'); wizard.classList.add('hidden'); }
-}
-
-/* Wizard functions */
-function prepareWizard(){
-    if(wizardInitialized) return;
-    wizardInitialized = true;
-    wizardStep = 0;
-    ['empresa','supervisor','area','lugar_especifico','fecha','hora_inicio','hora_termino','descripcion'].forEach(id=>{
-        const desktop = document.getElementById(id); const mobile = document.getElementById(id+'_m');
-        if(desktop && mobile) mobile.value = desktop.value;
-    });
-    buildWizardChecklists();
-    updateWizardUI();
-}
-function buildWizardChecklists(){
-    const container = document.getElementById('check-list-1-2-m'); container.innerHTML='';
-    document.querySelectorAll('#check-list-1-2 > div').forEach(div=>{
-        const q = div.querySelector('label').innerText;
-        const key = div.getAttribute('data-pregunta');
-        const item = document.createElement('div'); item.className='mb-3';
-        item.innerHTML = `<div class="mb-1">${q}</div>
-            <div class="flex gap-2">
-                <button class="px-3 py-2 rounded bg-green-500 text-white" data-key="${key}" data-answer="Si">Sí</button>
-                <button class="px-3 py-2 rounded bg-red-500 text-white" data-key="${key}" data-answer="No">No</button>
-            </div>`;
-        container.appendChild(item);
-    });
-    container.querySelectorAll('button').forEach(btn=>{
-        btn.addEventListener('click', (e)=>{
-            const key = e.target.getAttribute('data-key'); const ans = e.target.getAttribute('data-answer');
-            const desktopDiv = document.querySelector(`#check-list-1-2 > div[data-pregunta="${key}"]`);
-            if(desktopDiv){ const desktopBtn = desktopDiv.querySelector(`button[data-answer="${ans}"]`); if(desktopBtn) handleAnswerClick(desktopBtn); }
-            e.target.parentElement.querySelectorAll('button').forEach(b=>b.classList.remove('ring-2','ring-offset-2'));
-            e.target.classList.add('ring-2','ring-offset-2');
-            saveDraft();
-        });
-    });
-
-    const tcont = document.getElementById('subseccion-1-3-m'); tcont.innerHTML='';
-    document.querySelectorAll('#subseccion-1-3 > div').forEach(div=>{
-        const q = div.querySelector('label').innerText;
-        const key = div.getAttribute('data-pregunta');
-        const item = document.createElement('div'); item.className='mb-3';
-        item.innerHTML = `<div class="mb-1">${q}</div>
-            <div class="flex gap-2">
-                <button class="px-3 py-2 rounded bg-green-500 text-white" data-key="${key}" data-answer="Si">Sí</button>
-                <button class="px-3 py-2 rounded bg-red-500 text-white" data-key="${key}" data-answer="No">No</button>
-            </div>`;
-        tcont.appendChild(item);
-    });
-    tcont.querySelectorAll('button').forEach(btn=>{
-        btn.addEventListener('click', (e)=>{
-            const key = e.target.getAttribute('data-key'); const ans = e.target.getAttribute('data-answer');
-            const desktopDiv = document.querySelector(`#subseccion-1-3 > div[data-pregunta="${key}"]`);
-            if(desktopDiv){ const desktopBtn = desktopDiv.querySelector(`button[data-answer="${ans}"]`); if(desktopBtn) handleAnswerClick(desktopBtn); }
-            e.target.parentElement.querySelectorAll('button').forEach(b=>b.classList.remove('ring-2'));
-            e.target.classList.add('ring-2');
-            saveDraft();
-        });
-    });
-
-    const estrCont = document.getElementById('estrategias-grid-m'); estrCont.innerHTML='';
-    document.querySelectorAll('#estrategias-grid .strategy-box').forEach(box=>{
-        const name = box.getAttribute('data-strategy');
-        const item = document.createElement('label'); item.className='p-2 border rounded flex items-center justify-between';
-        item.innerHTML = `<span>${name}</span><input type="checkbox" data-strategy-name="${name}" class="strategy-checkbox-m">`;
-        estrCont.appendChild(item);
-    });
-    document.querySelectorAll('.strategy-checkbox-m').forEach(cb=>{
-        cb.addEventListener('change', (e)=>{
-            const name = e.target.getAttribute('data-strategy-name');
-            const desktopCb = document.querySelector(`.strategy-checkbox[data-strategy-name="${name}"]`);
-            if(desktopCb){ desktopCb.checked = e.target.checked; toggleStrategyBox(desktopCb); }
-            saveDraft();
-        });
-    });
-}
-function updateWizardUI(){
-    document.querySelectorAll('.wizard-step').forEach(el => el.classList.remove('active'));
-    const current = document.querySelector(`.wizard-step[data-step="${wizardStep}"]`);
-    if(current) current.classList.add('active');
-    document.getElementById('wizard-steps-indicator').innerText = `Paso ${wizardStep+1} de ${document.querySelectorAll('.wizard-step').length}`;
-    document.getElementById('wizard-prev').disabled = wizardStep===0;
-    document.getElementById('wizard-next').innerText = wizardStep === (document.querySelectorAll('.wizard-step').length-1) ? 'Previsualizar' : 'Siguiente';
-}
-function wizardNext(){
-    if(wizardStep === 0){
-        const entreprise = document.getElementById('empresa_m').value.trim();
-        if(!entreprise){ showMessage('Ingrese Empresa','error'); return; }
-        ['empresa','supervisor','area','lugar_especifico','fecha','hora_inicio','hora_termino','descripcion'].forEach(id=>{
-            const m = document.getElementById(id+'_m'), d = document.getElementById(id);
-            if(m && d) d.value = m.value;
-        });
-    }
-    if(wizardStep < document.querySelectorAll('.wizard-step').length-1){ wizardStep++; updateWizardUI(); }
-    else {
-        // last: show preview as image (mobile)
-        saveDraft();
-        mobileImagePreviewFlow();
-    }
-}
-function wizardPrev(){ if(wizardStep>0){ wizardStep--; updateWizardUI(); } }
-function syncMobileToDesktop(){ ['empresa','supervisor','area','lugar_especifico','fecha','hora_inicio','hora_termino','descripcion'].forEach(id=>{ const m = document.getElementById(id+'_m'), d = document.getElementById(id); if(m && d) d.value = m.value; }); }
-
-/* ---------------- Draft save/restore ---------------- */
-function saveDraft(){
-    try{
-        const draft = {
-            antecedentes: {
-                empresa: document.getElementById('empresa').value || '',
-                supervisor: document.getElementById('supervisor').value || '',
-                area: document.getElementById('area').value || '',
-                lugar_especifico: document.getElementById('lugar_especifico').value || '',
-                fecha: document.getElementById('fecha').value || '',
-                hora_inicio: document.getElementById('hora_inicio').value || '',
-                hora_termino: document.getElementById('hora_termino').value || '',
-                descripcion: document.getElementById('descripcion').value || '',
-                firma_base64: document.getElementById('firma_base64').value || ''
-            },
-            chequeo: { trabajador: {}, tarea: {} },
-            estrategias: []
-        };
-        document.querySelectorAll('#check-list-1-2 > div').forEach(div=>{
-            const key = div.getAttribute('data-pregunta'); const sel = div.querySelector('.btn-selected');
-            draft.chequeo.trabajador[key] = sel ? sel.getAttribute('data-answer') : '';
-        });
-        document.querySelectorAll('#subseccion-1-3 > div').forEach(div=>{
-            const key = div.getAttribute('data-pregunta'); const sel = div.querySelector('.btn-selected');
-            draft.chequeo.tarea[key] = sel ? sel.getAttribute('data-answer') : '';
-        });
-        document.querySelectorAll('.strategy-checkbox').forEach(cb=>{ if(cb.checked) draft.estrategias.push(cb.getAttribute('data-strategy-name')); });
-        localStorage.setItem(ART_DRAFT_KEY, JSON.stringify(draft));
-    }catch(e){ console.error('saveDraft',e); }
-}
-function restoreDraftIfAny(){
-    try{
-        const s = localStorage.getItem(ART_DRAFT_KEY); if(!s) return;
-        const draft = JSON.parse(s);
-        if(draft.antecedentes){
-            Object.entries(draft.antecedentes).forEach(([k,v])=>{
-                const el = document.getElementById(k); if(el) el.value = v;
-                const el_m = document.getElementById(k+'_m'); if(el_m) el_m.value = v;
-            });
-        }
-        if(draft.chequeo){
-            for(const [k,v] of Object.entries(draft.chequeo.trabajador || {})){
-                const desktopDiv = document.querySelector(`#check-list-1-2 > div[data-pregunta="${k}"]`);
-                if(desktopDiv && v){ const btn = desktopDiv.querySelector(`button[data-answer="${v}"]`); if(btn) handleAnswerClick(btn); }
-            }
-            for(const [k,v] of Object.entries(draft.chequeo.tarea || {})){
-                const desktopDiv = document.querySelector(`#subseccion-1-3 > div[data-pregunta="${k}"]`);
-                if(desktopDiv && v){ const btn = desktopDiv.querySelector(`button[data-answer="${v}"]`); if(btn) handleAnswerClick(btn); }
-            }
-        }
-        if(draft.antecedentes && draft.antecedentes.firma_base64){
-            const fb = draft.antecedentes.firma_base64;
-            document.getElementById('firma_base64').value = fb;
-            const img = document.getElementById('signature-image'); img.src = fb; img.classList.remove('hidden'); document.getElementById('signature-placeholder').classList.add('hidden');
-            signatureDataURL = fb;
-        }
-        if(draft.estrategias) {
-            document.querySelectorAll('.strategy-checkbox').forEach(cb=>{
-                cb.checked = draft.estrategias.includes(cb.getAttribute('data-strategy-name'));
-                toggleStrategyBox(cb);
-            });
-        }
-    }catch(e){ console.error('restoreDraft',e); }
-}
-
-/* ---------------- Utilities ---------------- */
-function debounce(fn, wait){ let t; return function(...args){ clearTimeout(t); t=setTimeout(()=>fn.apply(this,args), wait); }; }
-
-/* ---------------- Start ---------------- */
-initializeAppLogic();
+// wire initial
+(function init(){
+  applyMode();
+  initializeSignatureCanvas();
+  initStrategyBoxes();
+  wireAnswerButtons();
+  restoreDraftIfAny();
+  // wire doc-question specially so textarea toggles in desktop
+  document.querySelectorAll('.ans-btn-doc').forEach(btn=> btn.addEventListener('click', ()=> { const selected = btn.getAttribute('data-answer'); const txt = document.getElementById('documento_tipo'); if(selected==='Si') txt.classList.remove('hidden'); else txt.classList.add('hidden'); saveDraft(); }));
+  // wire inputs to save draft
+  document.querySelectorAll('#full-form input, #full-form textarea').forEach(i=> i.addEventListener('input', debounce(saveDraft, 300)));
+})();
 </script>
+
 </body>
 </html>
