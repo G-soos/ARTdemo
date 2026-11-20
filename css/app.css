@@ -199,7 +199,8 @@ dialog::backdrop { background: rgba(12, 24, 36, .6); }
 .dlg-firma header { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; background: var(--teal); color: #fff; }
 .dlg-firma header h2 { margin: 0; font-size: 18px; }
 .dlg-firma .x { background: none; border: 0; color: #fff; font-size: 30px; line-height: 1; cursor: pointer; width: 44px; height: 44px; }
-.dlg-firma section { padding: 4px 16px 8px; overflow: auto; }
+.dlg-cuerpo { flex: 1; overflow: auto; overscroll-behavior: contain; }
+.dlg-firma section { padding: 4px 16px 8px; }
 .dlg-firma h3 { font-size: 14px; margin: 12px 0 8px; color: var(--tx2); }
 .dlg-firma h3 small { font-weight: 400; }
 .dlg-firma label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; font-weight: 600; color: var(--tx2); }
@@ -225,9 +226,35 @@ dialog::backdrop { background: rgba(12, 24, 36, .6); }
 @media (max-width: 600px) {
   dialog.dlg-firma { max-width: 100vw; max-height: 100dvh; height: 100dvh; border-radius: 0; margin: 0; }
   .dlg-firma form { max-height: 100dvh; height: 100%; }
-  .dlg-firma section:last-of-type { flex: 1; }
   .pad { height: 200px; }
 }
+
+/* Vista previa de la firma (celular): al tocarla se abre el lienzo grande */
+.pad-vista {
+  width: 100%; min-height: 120px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+  border: 2px dashed var(--teal); border-radius: 12px; background: var(--teal-cl); cursor: pointer; padding: 10px;
+}
+.pad-vista img { max-width: 100%; max-height: 90px; object-fit: contain; }
+.pad-vista small { color: var(--tx2); font-size: 13px; }
+.pad-vista-txt { display: flex; align-items: center; gap: 10px; font-size: 18px; font-weight: 700; color: var(--teal-osc); }
+.pad-vista-txt .ico { font-size: 28px; }
+
+/* Lienzo de firma a pantalla completa */
+.lienzo {
+  position: fixed; inset: 0; z-index: 100; background: #fff; display: flex; flex-direction: column;
+  padding: max(10px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) max(10px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
+}
+.lienzo:fullscreen { width: 100vw; height: 100vh; }
+.lienzo-top { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; padding: 2px 4px 8px; flex-wrap: wrap; }
+.lienzo-top b { font-size: 17px; color: var(--teal-osc); }
+.lienzo-giro { color: var(--tx2); font-size: 13px; }
+@media (orientation: landscape) { .lienzo-giro { display: none; } }
+.lienzo-area { position: relative; flex: 1; min-height: 0; border: 2px dashed #b9c6d0; border-radius: 14px; overflow: hidden; }
+.lienzo-canvas { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; display: block; }
+.lienzo-linea { position: absolute; left: 6%; right: 6%; bottom: 26%; border-bottom: 2px solid #d6dee5; pointer-events: none; }
+.lienzo-x { position: absolute; left: 6%; bottom: calc(26% + 4px); color: #b9c6d0; font-size: 22px; pointer-events: none; }
+.lienzo-acc { display: flex; gap: 10px; justify-content: flex-end; padding-top: 10px; }
+.lienzo-acc .btn-pri { min-width: 140px; }
 @media (max-height: 500px) and (orientation: landscape) { .pad { height: 140px; } }
 
 .dlg-pdf { padding: 20px; max-width: 440px; }

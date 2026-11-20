@@ -43,57 +43,109 @@ export function interpretarCodigo(raw) {
 }
 
 /* ---------------- Firma manuscrita ---------------- */
+// Guarda los trazos como puntos: así se pueden redibujar si el lienzo cambia de tamaño
+// (por ejemplo al girar el teléfono) y exportar la firma nítida a cualquier escala.
 class PadFirma {
-  constructor(canvas) {
+  constructor(canvas, { grosor = 2.6 } = {}) {
     this.c = canvas; this.ctx = canvas.getContext('2d');
-    this.dibujando = false; this.tinta = false;
-    this.box = null;
+    this.grosor = grosor;
+    this.trazos = []; this.dibujando = false; this.w = 0; this.h = 0;
     canvas.addEventListener('pointerdown', e => this.inicio(e));
     canvas.addEventListener('pointermove', e => this.mover(e));
-    ['pointerup', 'pointercancel', 'pointerleave'].forEach(t => canvas.addEventListener(t, () => { this.dibujando = false; }));
+    ['pointerup', 'pointercancel'].forEach(t => canvas.addEventListener(t, () => { this.dibujando = false; }));
   }
   ajustar() {
     const r = this.c.getBoundingClientRect();
+    if (!r.width || !r.height) return;
     const dpr = window.devicePixelRatio || 1;
-    this.c.width = Math.max(1, Math.round(r.width * dpr));
-    this.c.height = Math.max(1, Math.round(r.height * dpr));
+    const [ow, oh] = [this.w, this.h];
+    this.w = r.width; this.h = r.height;
+    this.c.width = Math.round(r.width * dpr); this.c.height = Math.round(r.height * dpr);
     this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    this.ctx.lineCap = 'round'; this.ctx.lineJoin = 'round';
-    this.ctx.strokeStyle = '#0b1f3a'; this.ctx.lineWidth = 2.6;
-    this.borrar();
+    if (ow && oh && this.trazos.length && (ow !== this.w || oh !== this.h)) {
+      const k = Math.min(this.w / ow, this.h / oh);
+      this.trazos = this.trazos.map(t => t.map(p => ({ x: p.x * k, y: p.y * k })));
+    }
+    this.redibujar();
   }
+  estilo(ctx, grosor) { ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.strokeStyle = '#0b1f3a'; ctx.fillStyle = '#0b1f3a'; ctx.lineWidth = grosor; }
+  pintar(ctx, trazos, grosor, dx = 0, dy = 0, k = 1) {
+    this.estilo(ctx, grosor);
+    for (const t of trazos) {
+      if (t.length === 1) { ctx.beginPath(); ctx.arc((t[0].x - dx) * k, (t[0].y - dy) * k, grosor / 2, 0, Math.PI * 2); ctx.fill(); continue; }
+      ctx.beginPath(); ctx.moveTo((t[0].x - dx) * k, (t[0].y - dy) * k);
+      for (let i = 1; i < t.length; i++) ctx.lineTo((t[i].x - dx) * k, (t[i].y - dy) * k);
+      ctx.stroke();
+    }
+  }
+  redibujar() { this.ctx.clearRect(0, 0, this.w, this.h); this.pintar(this.ctx, this.trazos, this.grosor); }
   pos(e) { const r = this.c.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; }
-  marcar(p) {
-    const b = this.box || { x0: p.x, y0: p.y, x1: p.x, y1: p.y };
-    this.box = { x0: Math.min(b.x0, p.x), y0: Math.min(b.y0, p.y), x1: Math.max(b.x1, p.x), y1: Math.max(b.y1, p.y) };
-  }
   inicio(e) {
     e.preventDefault(); this.c.setPointerCapture?.(e.pointerId);
-    this.dibujando = true; this.ultimo = this.pos(e); this.marcar(this.ultimo);
+    this.dibujando = true; this.trazos.push([this.pos(e)]);
   }
   mover(e) {
     if (!this.dibujando) return;
-    const eventos = e.getCoalescedEvents ? e.getCoalescedEvents() : [e];
-    for (const ev of eventos) {
-      const p = this.pos(ev);
-      this.ctx.beginPath(); this.ctx.moveTo(this.ultimo.x, this.ultimo.y); this.ctx.lineTo(p.x, p.y); this.ctx.stroke();
-      this.ultimo = p; this.marcar(p); this.tinta = true;
+    const t = this.trazos[this.trazos.length - 1];
+    this.estilo(this.ctx, this.grosor);
+    for (const ev of (e.getCoalescedEvents ? e.getCoalescedEvents() : [e])) {
+      const p = this.pos(ev), u = t[t.length - 1];
+      this.ctx.beginPath(); this.ctx.moveTo(u.x, u.y); this.ctx.lineTo(p.x, p.y); this.ctx.stroke();
+      t.push(p);
     }
   }
-  borrar() { this.ctx.clearRect(0, 0, this.c.width, this.c.height); this.tinta = false; this.box = null; }
-  // PNG recortado al trazo, con fondo transparente, máx. 120 px de alto (liviano para guardar y para el PDF)
+  borrar() { this.trazos = []; this.redibujar(); }
+  get tinta() { return this.trazos.some(t => t.length > 3); }
+  // PNG recortado al trazo, fondo transparente, ~120 px de alto (liviano para guardar y para el PDF)
   png() {
-    if (!this.tinta || !this.box) return null;
-    const dpr = window.devicePixelRatio || 1, pad = 6;
-    const x = Math.max(0, (this.box.x0 - pad) * dpr), y = Math.max(0, (this.box.y0 - pad) * dpr);
-    const w = Math.min(this.c.width - x, (this.box.x1 - this.box.x0 + pad * 2) * dpr);
-    const hgt = Math.min(this.c.height - y, (this.box.y1 - this.box.y0 + pad * 2) * dpr);
-    const esc = Math.min(1, 120 / hgt);
+    if (!this.tinta) return null;
+    const pts = this.trazos.flat();
+    const x0 = Math.min(...pts.map(p => p.x)), x1 = Math.max(...pts.map(p => p.x));
+    const y0 = Math.min(...pts.map(p => p.y)), y1 = Math.max(...pts.map(p => p.y));
+    const margen = this.grosor * 2;
+    const bw = x1 - x0 + margen * 2, bh = y1 - y0 + margen * 2;
+    const k = Math.min(3, 120 / bh, 600 / bw);
     const t = document.createElement('canvas');
-    t.width = Math.max(1, Math.round(w * esc)); t.height = Math.max(1, Math.round(hgt * esc));
-    t.getContext('2d').drawImage(this.c, x, y, w, hgt, 0, 0, t.width, t.height);
+    t.width = Math.max(1, Math.round(bw * k)); t.height = Math.max(1, Math.round(bh * k));
+    this.pintar(t.getContext('2d'), this.trazos, Math.max(2, this.grosor * k), x0 - margen, y0 - margen, k);
     return t.toDataURL('image/png');
   }
+}
+
+// Lienzo a pantalla completa para firmar cómodo en el celular. Devuelve el PNG o null.
+async function lienzoGrande(contenedor) {
+  const cv = h('canvas', { class: 'lienzo-canvas' });
+  let pad, resolver;
+  const fin = new Promise(r => { resolver = r; });
+  const ov = h('div', { class: 'lienzo', role: 'dialog', 'aria-label': 'Firmar' },
+    h('div', { class: 'lienzo-top' },
+      h('b', {}, 'Firme dentro del recuadro'),
+      h('small', { class: 'lienzo-giro' }, '↻ Gire el teléfono para tener más espacio')),
+    h('div', { class: 'lienzo-area' }, cv, h('span', { class: 'lienzo-linea' }), h('span', { class: 'lienzo-x' }, '✕')),
+    h('div', { class: 'lienzo-acc' },
+      h('button', { type: 'button', class: 'btn-sec', onclick: () => pad.borrar() }, 'Borrar'),
+      h('button', { type: 'button', class: 'btn-txt', onclick: () => cerrar(false) }, 'Cancelar'),
+      h('button', { type: 'button', class: 'btn-pri', onclick: () => cerrar(true) }, 'Listo')));
+  contenedor.appendChild(ov);
+  // Pantalla completa y horizontal donde el navegador lo permita (Android). En iPhone queda como capa completa.
+  try { await ov.requestFullscreen?.({ navigationUI: 'hide' }); await screen.orientation?.lock?.('landscape'); } catch { /* no soportado */ }
+  pad = new PadFirma(cv, { grosor: 3.2 });
+  const ajustar = () => requestAnimationFrame(() => pad.ajustar());
+  ajustar();
+  window.addEventListener('resize', ajustar);
+  screen.orientation?.addEventListener?.('change', ajustar);
+
+  async function cerrar(ok) {
+    if (ok && !pad.tinta) { ov.querySelector('.lienzo-top b').textContent = 'Firme antes de presionar Listo'; return; }
+    const img = ok ? pad.png() : null;
+    window.removeEventListener('resize', ajustar);
+    screen.orientation?.removeEventListener?.('change', ajustar);
+    try { screen.orientation?.unlock?.(); } catch { /* nada */ }
+    if (document.fullscreenElement) { try { await document.exitFullscreen(); } catch { /* nada */ } }
+    ov.remove();
+    resolver(img);
+  }
+  return fin;
 }
 
 /* ---------------- Lector de códigos ---------------- */
@@ -102,10 +154,23 @@ function crearLector(idElemento) {
   if (!lib) throw new Error('Lector de códigos no disponible');
   const F = lib.Html5QrcodeSupportedFormats;
   return new lib.Html5Qrcode(idElemento, {
-    formatsToSupport: [F.QR_CODE, F.PDF_417, F.CODE_128, F.CODE_39, F.DATA_MATRIX, F.AZTEC],
+    formatsToSupport: [F.QR_CODE, F.PDF_417, F.CODE_128, F.CODE_39],
     experimentalFeatures: { useBarCodeDetectorIfSupported: true },
     verbose: false,
   });
+}
+
+// Lee el código de una foto. Usa el detector nativo del teléfono si existe (Android Chrome),
+// que es más robusto con fotos grandes; si no, la librería.
+async function leerFoto(archivo, lector) {
+  if ('BarcodeDetector' in window) {
+    try {
+      const bd = new window.BarcodeDetector({ formats: ['qr_code', 'pdf417', 'code_128', 'code_39'] });
+      const res = await bd.detect(await createImageBitmap(archivo));
+      if (res[0]?.rawValue) return res[0].rawValue;
+    } catch { /* sin soporte: seguimos con la librería */ }
+  }
+  return lector.scanFile(archivo, false);
 }
 
 /* ---------------- Diálogo de firma ---------------- */
@@ -114,49 +179,70 @@ function crearLector(idElemento) {
 export function pedirFirma({ titulo, declaracion = '', sugerido = {} }) {
   return new Promise(resolve => {
     const idLector = 'lector-' + uid().slice(0, 8);
+    const movil = window.matchMedia('(pointer: coarse)').matches;
     let identidad = null;   // resultado del escaneo
     let lector = null;
     let escaneando = false;
+    let modoFoto = 'auto';
+    let firmaImg = null;    // firma hecha en el lienzo grande (móvil)
 
     const nombre = h('input', { type: 'text', autocomplete: 'name', placeholder: 'Nombre y apellido', value: sugerido.nombre || '', list: 'dl-nombres' });
     const run = h('input', { type: 'text', inputmode: 'text', placeholder: '12.345.678-9', value: sugerido.run ? formatearRun(sugerido.run) : '' });
     const runAviso = h('small', { class: 'campo-aviso' });
     const chip = h('div', { class: 'id-chip oculto' });
-    const zonaLector = h('div', { class: 'lector oculto' }, h('div', { id: idLector, class: 'lector-video' }), h('p', { class: 'lector-ayuda' }, ''));
+    const zonaLector = h('div', { class: 'lector oculto' }, h('div', { id: idLector, class: 'lector-video' }), h('p', { class: 'lector-ayuda' }, 'Apunte al código QR o de barras y manténgalo quieto.'));
     const archivo = h('input', { type: 'file', accept: 'image/*', capture: 'environment', class: 'oculto' });
-    const canvas = h('canvas', { class: 'pad' });
     const dl = h('datalist', { id: 'dl-nombres' }, ...nombresConocidos().map(n => h('option', { value: n })));
     const error = h('p', { class: 'dlg-error' });
+    const leyendo = h('p', { class: 'lector-ayuda oculto' }, 'Leyendo el código…');
 
-    const btnCarnet = h('button', { type: 'button', class: 'btn-id', onclick: () => escanear('carnet') }, h('span', { class: 'ico' }, '🪪'), h('span', {}, h('b', {}, 'Escanear carnet'), h('small', {}, 'QR del reverso de la cédula')));
-    const btnCred = h('button', { type: 'button', class: 'btn-id', onclick: () => escanear('credencial') }, h('span', { class: 'ico' }, '🏷️'), h('span', {}, h('b', {}, 'Escanear credencial'), h('small', {}, 'Credencial de faena / empresa')));
-    const btnFoto = h('button', { type: 'button', class: 'btn-link', onclick: () => archivo.click() }, '¿La cámara no lee? Sacar foto del código');
+    const fotografiar = modo => { error.textContent = ''; modoFoto = modo; detenerLector(); archivo.click(); };
+    const btnCarnet = h('button', { type: 'button', class: 'btn-id', onclick: () => fotografiar('carnet') }, h('span', { class: 'ico' }, '🪪'), h('span', {}, h('b', {}, 'Carnet'), h('small', {}, 'Foto al QR del reverso')));
+    const btnCred = h('button', { type: 'button', class: 'btn-id', onclick: () => fotografiar('credencial') }, h('span', { class: 'ico' }, '🏷️'), h('span', {}, h('b', {}, 'Credencial'), h('small', {}, 'Foto al código de la credencial')));
+    const btnVivo = h('button', { type: 'button', class: 'btn-link', onclick: () => escanear() }, 'o escanear en vivo con la cámara');
+
+    // Zona de firma: en celular, una vista previa que abre el lienzo grande; en PC, el lienzo directo.
+    let pad = null, zonaFirma;
+    const vista = h('button', { type: 'button', class: 'pad-vista', onclick: async () => {
+      const img = await lienzoGrande(dlg);
+      if (img) { firmaImg = img; pintarVista(); }
+    } });
+    const pintarVista = () => vista.replaceChildren(firmaImg
+      ? h('img', { src: firmaImg, alt: 'Firma' })
+      : h('span', { class: 'pad-vista-txt' }, h('span', { class: 'ico' }, '✍️'), 'Toca aquí para firmar'),
+      firmaImg ? h('small', {}, 'Toca para firmar de nuevo') : null);
+    if (movil) { pintarVista(); zonaFirma = vista; }
+    else {
+      const canvas = h('canvas', { class: 'pad' });
+      zonaFirma = h('div', { class: 'pad-wrap' }, canvas, h('span', { class: 'pad-linea' }), h('button', { type: 'button', class: 'btn-sec pad-borrar', onclick: () => pad.borrar() }, 'Borrar'));
+      pad = new PadFirma(canvas);
+    }
 
     const dlg = h('dialog', { class: 'dlg-firma' },
       h('form', { method: 'dialog', onsubmit: e => e.preventDefault() },
         h('header', {}, h('h2', {}, titulo), h('button', { type: 'button', class: 'x', 'aria-label': 'Cerrar', onclick: () => cerrar(null) }, '×')),
-        declaracion ? h('p', { class: 'declaracion' }, declaracion) : null,
-        h('section', {},
-          h('h3', {}, '1. Identificación'),
-          h('div', { class: 'ids' }, btnCarnet, btnCred),
-          zonaLector, btnFoto, archivo, chip,
-          h('div', { class: 'fila2' },
-            h('label', {}, 'Nombre', nombre),
-            h('label', {}, 'RUN', run, runAviso)),
-          dl),
-        h('section', {},
-          h('h3', {}, '2. Firma manuscrita ', h('small', {}, '(opcional si escaneó carnet o credencial)')),
-          h('div', { class: 'pad-wrap' }, canvas, h('span', { class: 'pad-linea' }), h('button', { type: 'button', class: 'btn-sec pad-borrar', onclick: () => pad.borrar() }, 'Borrar'))),
-        error,
+        h('div', { class: 'dlg-cuerpo' },
+          declaracion ? h('p', { class: 'declaracion' }, declaracion) : null,
+          h('section', {},
+            h('h3', {}, '1. Identificación ', h('small', {}, '(opcional si firma a mano)')),
+            h('div', { class: 'ids' }, btnCarnet, btnCred),
+            btnVivo, zonaLector, leyendo, archivo, chip,
+            h('div', { class: 'fila2' },
+              h('label', {}, 'Nombre', nombre),
+              h('label', {}, 'RUN', run, runAviso)),
+            dl),
+          h('section', {},
+            h('h3', {}, '2. Firma manuscrita ', h('small', {}, '(opcional si leyó carnet o credencial)')),
+            zonaFirma),
+          error),
         h('footer', {},
           h('button', { type: 'button', class: 'btn-sec', onclick: () => cerrar(null) }, 'Cancelar'),
           h('button', { type: 'button', class: 'btn-pri', onclick: confirmar }, 'Confirmar firma'))));
 
     document.body.appendChild(dlg);
-    dlg.addEventListener('cancel', e => { e.preventDefault(); cerrar(null); });
+    dlg.addEventListener('cancel', e => { e.preventDefault(); if (!dlg.querySelector('.lienzo')) cerrar(null); });
     dlg.showModal();
-    const pad = new PadFirma(canvas);
-    requestAnimationFrame(() => pad.ajustar());
+    if (pad) requestAnimationFrame(() => pad.ajustar());
 
     run.addEventListener('blur', () => {
       if (!run.value.trim()) { runAviso.textContent = ''; return; }
@@ -167,38 +253,37 @@ export function pedirFirma({ titulo, declaracion = '', sugerido = {} }) {
 
     archivo.addEventListener('change', async () => {
       const f = archivo.files[0]; if (!f) return;
+      leyendo.classList.remove('oculto');
       try {
-        await detenerLector();
         lector = lector || crearLector(idLector);
-        const txt = await lector.scanFile(f, false);
-        procesar(txt, zonaLector.dataset.modo || 'auto');
+        procesar(await leerFoto(f, lector), modoFoto);
       } catch (e) {
-        console.warn(e); error.textContent = 'No se encontró un código legible en la foto. Acérquese más y evite reflejos.';
-      } finally { archivo.value = ''; }
+        console.warn(e);
+        error.textContent = modoFoto === 'carnet'
+          ? 'No se pudo leer el QR. Saque la foto de cerca al código del reverso, con buena luz y sin reflejos.'
+          : 'No se pudo leer el código. Acérquese más, con buena luz y sin reflejos.';
+      } finally { archivo.value = ''; leyendo.classList.add('oculto'); }
     });
 
-    async function escanear(modo) {
+    async function escanear() {
       error.textContent = '';
-      if (escaneando) { await detenerLector(); if (zonaLector.dataset.modo === modo) return; }
-      zonaLector.dataset.modo = modo;
+      if (escaneando) { await detenerLector(); return; }
       zonaLector.classList.remove('oculto');
-      zonaLector.querySelector('.lector-ayuda').textContent = modo === 'carnet'
-        ? 'Apunte al código QR del reverso de la cédula (o al código de barras si es antigua).'
-        : 'Apunte al código QR o de barras de la credencial.';
+      btnVivo.textContent = 'Detener cámara';
       try {
         lector = lector || crearLector(idLector);
         escaneando = true;
+        // Sin recuadro (se analiza la imagen completa) y en alta resolución: el QR de la cédula es denso.
         await lector.start({ facingMode: 'environment' }, {
-          fps: 12,
-          qrbox: (w, hh) => ({ width: Math.floor(w * 0.85), height: Math.floor(Math.min(hh * 0.8, w * 0.85)) }),
-        }, txt => { detenerLector(); procesar(txt, modo); }, () => {});
+          fps: 10,
+          videoConstraints: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 }, advanced: [{ focusMode: 'continuous' }] },
+        }, txt => { detenerLector(); procesar(txt, 'auto'); }, () => {});
       } catch (e) {
-        escaneando = false;
         console.warn(e);
-        zonaLector.classList.add('oculto');
+        await detenerLector();
         error.textContent = location.protocol === 'https:' || location.hostname === 'localhost'
-          ? 'No se pudo abrir la cámara. Revise el permiso de cámara del navegador o use "Sacar foto del código".'
-          : 'La cámara solo funciona en https:// o localhost. Use "Sacar foto del código".';
+          ? 'No se pudo abrir la cámara en vivo. Use los botones Carnet / Credencial (foto).'
+          : 'La cámara solo funciona en https:// o localhost.';
       }
     }
 
@@ -206,6 +291,7 @@ export function pedirFirma({ titulo, declaracion = '', sugerido = {} }) {
       if (lector && escaneando) { try { await lector.stop(); } catch { /* ya detenido */ } }
       escaneando = false;
       zonaLector.classList.add('oculto');
+      btnVivo.textContent = 'o escanear en vivo con la cámara';
     }
 
     function procesar(txt, modo) {
@@ -233,10 +319,10 @@ export function pedirFirma({ titulo, declaracion = '', sugerido = {} }) {
       const r = run.value.trim() ? normalizarRun(run.value) : null;
       if (!n) { error.textContent = 'Ingrese el nombre.'; nombre.focus(); return; }
       if (run.value.trim() && !r) { error.textContent = 'El RUN no es válido.'; run.focus(); return; }
-      const img = pad.png();
-      if (!img && !identidad) { error.textContent = 'Firme en el recuadro o escanee su carnet / credencial.'; return; }
-      if (identidad && identidad.run && r && identidad.run !== r) { error.textContent = 'El RUN escrito no coincide con el documento escaneado.'; return; }
-      if (identidad && !r) { error.textContent = 'Ingrese el RUN para asociarlo al documento escaneado.'; run.focus(); return; }
+      const img = pad ? pad.png() : firmaImg;
+      if (!img && !identidad) { error.textContent = 'Firme o lea su carnet / credencial.'; return; }
+      if (identidad && identidad.run && r && identidad.run !== r) { error.textContent = 'El RUN escrito no coincide con el documento leído.'; return; }
+      if (identidad && !r) { error.textContent = 'Ingrese el RUN para asociarlo al documento leído.'; run.focus(); return; }
 
       const metodos = [];
       if (identidad) metodos.push(identidad.tipo === 'carnet' ? 'carnet' : 'credencial');
