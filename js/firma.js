@@ -55,7 +55,8 @@ class PadFirma {
     ['pointerup', 'pointercancel'].forEach(t => canvas.addEventListener(t, () => { this.dibujando = false; }));
   }
   ajustar() {
-    const r = this.c.getBoundingClientRect();
+    // Tamaño de diseño (sin la rotación CSS): sirve igual para el lienzo normal y el girado.
+    const r = { width: this.c.clientWidth, height: this.c.clientHeight };
     if (!r.width || !r.height) return;
     const dpr = window.devicePixelRatio || 1;
     const [ow, oh] = [this.w, this.h];
@@ -79,7 +80,12 @@ class PadFirma {
     }
   }
   redibujar() { this.ctx.clearRect(0, 0, this.w, this.h); this.pintar(this.ctx, this.trazos, this.grosor); }
-  pos(e) { const r = this.c.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; }
+  pos(e) {
+    const r = this.c.getBoundingClientRect();
+    // Lienzo girado 90° a la derecha por CSS: se convierten las coordenadas de pantalla a las del lienzo.
+    if (this.rotado) return { x: e.clientY - r.top, y: r.right - e.clientX };
+    return { x: e.clientX - r.left, y: e.clientY - r.top };
+  }
   inicio(e) {
     e.preventDefault(); this.c.setPointerCapture?.(e.pointerId);
     this.dibujando = true; this.trazos.push([this.pos(e)]);
@@ -120,7 +126,7 @@ async function lienzoGrande(contenedor) {
   const ov = h('div', { class: 'lienzo', role: 'dialog', 'aria-label': 'Firmar' },
     h('div', { class: 'lienzo-top' },
       h('b', {}, 'Firme dentro del recuadro'),
-      h('small', { class: 'lienzo-giro' }, '↻ Gire el teléfono para tener más espacio')),
+      h('small', { class: 'lienzo-giro' }, 'Gire el teléfono para firmar en horizontal')),
     h('div', { class: 'lienzo-area' }, cv, h('span', { class: 'lienzo-linea' }), h('span', { class: 'lienzo-x' }, '✕')),
     h('div', { class: 'lienzo-acc' },
       h('button', { type: 'button', class: 'btn-sec', onclick: () => pad.borrar() }, 'Borrar'),
@@ -129,16 +135,25 @@ async function lienzoGrande(contenedor) {
   contenedor.appendChild(ov);
   // Capa fija a pantalla completa, sin forzar fullscreen ni rotación (en algunos Android dejaba el lienzo congelado).
   // El lienzo se reajusta cada vez que cambia de tamaño (p. ej. al girar el teléfono) sin perder el trazo.
+  // Con el teléfono vertical, la capa se dibuja girada 90°: el usuario gira el teléfono con la mano y firma
+  // en horizontal aunque tenga desactivado el giro automático. Si la pantalla gira sola, se vuelve a la normal.
   pad = new PadFirma(cv, { grosor: 3.2 });
-  const ajustar = () => requestAnimationFrame(() => pad.ajustar());
+  const orientar = () => {
+    const vertical = window.innerHeight > window.innerWidth;
+    ov.classList.toggle('rotado', vertical);
+    pad.rotado = vertical;
+  };
+  const ajustar = () => requestAnimationFrame(() => { orientar(); pad.ajustar(); });
   const obs = 'ResizeObserver' in window ? new ResizeObserver(ajustar) : null;
-  if (obs) obs.observe(cv); else window.addEventListener('resize', ajustar);
+  if (obs) obs.observe(cv);
+  window.addEventListener('resize', ajustar);
+  orientar();
   ajustar();
 
   async function cerrar(ok) {
     if (ok && !pad.tinta) { ov.querySelector('.lienzo-top b').textContent = 'Firme antes de presionar Listo'; return; }
     const img = ok ? pad.png() : null;
-    if (obs) obs.disconnect(); else window.removeEventListener('resize', ajustar);
+    obs?.disconnect(); window.removeEventListener('resize', ajustar);
     ov.remove();
     resolver(img);
   }

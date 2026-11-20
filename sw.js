@@ -1,6 +1,6 @@
 // Service worker: guarda la app completa en el dispositivo para usarla sin señal.
 // Al cambiar cualquier archivo, subir VERSION para que los teléfonos descarguen la nueva versión.
-const VERSION = 'art-v2.1.2';
+const VERSION = 'art-v2.1.3';
 const ARCHIVOS = [
   './', 'index.html', 'manifest.webmanifest', 'css/app.css',
   'js/app.js', 'js/dom.js', 'js/schema.js', 'js/rules.js', 'js/store.js', 'js/firma.js', 'js/pdf.js',
