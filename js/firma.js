@@ -127,21 +127,18 @@ async function lienzoGrande(contenedor) {
       h('button', { type: 'button', class: 'btn-txt', onclick: () => cerrar(false) }, 'Cancelar'),
       h('button', { type: 'button', class: 'btn-pri', onclick: () => cerrar(true) }, 'Listo')));
   contenedor.appendChild(ov);
-  // Pantalla completa y horizontal donde el navegador lo permita (Android). En iPhone queda como capa completa.
-  try { await ov.requestFullscreen?.({ navigationUI: 'hide' }); await screen.orientation?.lock?.('landscape'); } catch { /* no soportado */ }
+  // Capa fija a pantalla completa, sin forzar fullscreen ni rotación (en algunos Android dejaba el lienzo congelado).
+  // El lienzo se reajusta cada vez que cambia de tamaño (p. ej. al girar el teléfono) sin perder el trazo.
   pad = new PadFirma(cv, { grosor: 3.2 });
   const ajustar = () => requestAnimationFrame(() => pad.ajustar());
+  const obs = 'ResizeObserver' in window ? new ResizeObserver(ajustar) : null;
+  if (obs) obs.observe(cv); else window.addEventListener('resize', ajustar);
   ajustar();
-  window.addEventListener('resize', ajustar);
-  screen.orientation?.addEventListener?.('change', ajustar);
 
   async function cerrar(ok) {
     if (ok && !pad.tinta) { ov.querySelector('.lienzo-top b').textContent = 'Firme antes de presionar Listo'; return; }
     const img = ok ? pad.png() : null;
-    window.removeEventListener('resize', ajustar);
-    screen.orientation?.removeEventListener?.('change', ajustar);
-    try { screen.orientation?.unlock?.(); } catch { /* nada */ }
-    if (document.fullscreenElement) { try { await document.exitFullscreen(); } catch { /* nada */ } }
+    if (obs) obs.disconnect(); else window.removeEventListener('resize', ajustar);
     ov.remove();
     resolver(img);
   }
