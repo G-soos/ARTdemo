@@ -1,6 +1,6 @@
 // Service worker: guarda la app completa en el dispositivo para usarla sin señal.
 // Al cambiar cualquier archivo, subir VERSION para que los teléfonos descarguen la nueva versión.
-const VERSION = 'art-v2.1.0';
+const VERSION = 'art-v2.1.1';
 const ARCHIVOS = [
   './', 'index.html', 'manifest.webmanifest', 'css/app.css',
   'js/app.js', 'js/dom.js', 'js/schema.js', 'js/rules.js', 'js/store.js', 'js/firma.js', 'js/pdf.js',
@@ -10,7 +10,8 @@ const ARCHIVOS = [
 ];
 
 self.addEventListener('install', e => {
-  e.waitUntil(caches.open(VERSION).then(c => c.addAll(ARCHIVOS)).then(() => self.skipWaiting()));
+  // cache: 'reload' evita guardar copias viejas desde la caché HTTP del navegador
+  e.waitUntil(caches.open(VERSION).then(c => c.addAll(ARCHIVOS.map(u => new Request(u, { cache: 'reload' })))).then(() => self.skipWaiting()));
 });
 self.addEventListener('activate', e => {
   e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== VERSION).map(k => caches.delete(k)))).then(() => self.clients.claim()));
@@ -19,7 +20,8 @@ self.addEventListener('activate', e => {
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET' || new URL(e.request.url).origin !== location.origin) return;
   e.respondWith(
-    fetch(e.request).then(r => {
+    // no-cache: siempre pregunta al servidor si hay versión nueva (GitHub Pages cachea 10 min)
+    fetch(e.request, { cache: 'no-cache' }).then(r => {
       if (r.ok) { const copia = r.clone(); caches.open(VERSION).then(c => c.put(e.request, copia)); }
       return r;
     }).catch(() => caches.match(e.request, { ignoreSearch: true }).then(r => r || caches.match('index.html')))

@@ -407,7 +407,13 @@ function mostrarPdf(blob, nombre) {
 
 /* ---------------- Inicio ---------------- */
 if ('serviceWorker' in navigator && location.protocol !== 'file:') {
-  navigator.serviceWorker.register('sw.js').catch(e => console.warn('SW', e));
+  navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).then(reg => reg.update()).catch(e => console.warn('SW', e));
+  // Cuando se instala una versión nueva, recargar una vez para usarla de inmediato
+  // (solo si ya había una versión anterior controlando la página).
+  if (navigator.serviceWorker.controller) {
+    let recargado = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => { if (!recargado) { recargado = true; location.reload(); } });
+  }
 }
 if (location.protocol === 'file:') {
   document.body.prepend(h('div', { class: 'aviso aviso-alerta', style: 'margin:0;border-radius:0' }, 'Abra la app desde un servidor (GitHub Pages o "python -m http.server"): desde file:// no se pueden cargar las plantillas PDF ni usar la cámara.'));
